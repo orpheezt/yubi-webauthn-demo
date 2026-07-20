@@ -1,0 +1,32 @@
+# syntax=docker/dockerfile:1
+
+ARG NODE_VERSION=22
+ARG PORT=3000
+
+FROM oven/bun:1.1.38-alpine AS build
+WORKDIR /app
+
+# Copy dependency files
+COPY package.json bun.lock ./
+
+# Install dependencies
+RUN bun install --frozen-lockfile
+
+# Copy source code
+COPY . .
+
+# Build the frontend (Vite + Tanstack Start compiles to nitro output typically, or standard dist)
+RUN bun run build
+
+FROM oven/bun:1.1.38-alpine AS final
+WORKDIR /app
+
+# Copy built assets
+COPY --from=build /app/.output ./.output
+COPY --from=build /app/package.json ./
+
+EXPOSE ${PORT}
+ENV PORT=${PORT}
+
+# Run the nitro server
+CMD ["bun", "run", ".output/server/index.mjs"]
