@@ -7,7 +7,7 @@
 
 ## Phase 2: Backend WebAuthn Logic
 - [x] Task: Integrate `webauthn-rs` into the backend. (commit: 8df223b)
-- [ ] Task: Write tests for Registration API endpoints (challenge and register).
+- [x] Task: Write tests for Registration API endpoints (challenge and register). (commit: 91a7355)
 - [ ] Task: Implement Registration API endpoints.
 - [ ] Task: Write tests for Authentication API endpoints (challenge and authenticate).
 - [ ] Task: Implement Authentication API endpoints.
