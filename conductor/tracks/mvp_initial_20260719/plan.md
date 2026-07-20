@@ -6,7 +6,7 @@
 - [x] Task: Phase Verification & Checkpoint (Refer to workflow.md)
 
 ## Phase 2: Backend WebAuthn Logic
-- [ ] Task: Integrate `webauthn-rs` into the backend.
+- [x] Task: Integrate `webauthn-rs` into the backend. (commit: 8df223b)
 - [ ] Task: Write tests for Registration API endpoints (challenge and register).
 - [ ] Task: Implement Registration API endpoints.
 - [ ] Task: Write tests for Authentication API endpoints (challenge and authenticate).
