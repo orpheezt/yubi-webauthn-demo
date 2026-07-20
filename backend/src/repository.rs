@@ -74,3 +74,73 @@ pub async fn get_user_id_by_cred_id(pool: &PgPool, cred_id_b64: &str) -> Result<
         .await?;
     Ok(rec.map(|r| r.user_id))
 }
+
+pub struct CredentialInfo {
+    pub cred_id: String,
+    pub name: String,
+    pub created_at: chrono::DateTime<chrono::Utc>,
+}
+
+pub async fn list_credentials_info(pool: &PgPool, user_id: Uuid) -> Result<Vec<CredentialInfo>, Error> {
+    let creds = sqlx::query!(
+        "SELECT cred_id, name, created_at FROM credentials WHERE user_id = $1 ORDER BY created_at DESC",
+        user_id
+    )
+    .fetch_all(pool)
+    .await?;
+    Ok(creds.into_iter().map(|c| CredentialInfo {
+        cred_id: c.cred_id,
+        name: c.name,
+        created_at: c.created_at,
+    }).collect())
+}
+
+pub async fn update_credential_name(pool: &PgPool, cred_id: &str, user_id: Uuid, name: &str) -> Result<u64, Error> {
+    let res = sqlx::query!(
+        "UPDATE credentials SET name = $1 WHERE cred_id = $2 AND user_id = $3",
+        name, cred_id, user_id
+    )
+    .execute(pool)
+    .await?;
+    Ok(res.rows_affected())
+}
+
+pub async fn delete_credential(pool: &PgPool, cred_id: &str, user_id: Uuid) -> Result<u64, Error> {
+    let res = sqlx::query!(
+        "DELETE FROM credentials WHERE cred_id = $1 AND user_id = $2",
+        cred_id, user_id
+    )
+    .execute(pool)
+    .await?;
+    Ok(res.rows_affected())
+}
+
+pub struct UserInfo {
+    pub id: Uuid,
+    pub username: String,
+    pub created_at: chrono::DateTime<chrono::Utc>,
+}
+
+pub async fn get_user_info(pool: &PgPool, user_id: Uuid) -> Result<Option<UserInfo>, Error> {
+    let user = sqlx::query!(
+        "SELECT id, username, created_at FROM users WHERE id = $1",
+        user_id
+    )
+    .fetch_optional(pool)
+    .await?;
+    Ok(user.map(|u| UserInfo {
+        id: u.id,
+        username: u.username,
+        created_at: u.created_at,
+    }))
+}
+
+pub async fn get_credential_count(pool: &PgPool, user_id: Uuid) -> Result<i64, Error> {
+    let rec = sqlx::query!(
+        "SELECT COUNT(*) as count FROM credentials WHERE user_id = $1",
+        user_id
+    )
+    .fetch_one(pool)
+    .await?;
+    Ok(rec.count.unwrap_or(0))
+}

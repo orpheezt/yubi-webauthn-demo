@@ -235,13 +235,9 @@ async fn list_credentials(
     let user_id = Uuid::parse_str(cookie.value())
         .map_err(|_| (StatusCode::UNAUTHORIZED, "Invalid session".to_string()))?;
 
-    let creds = sqlx::query!(
-        "SELECT cred_id, name, created_at FROM credentials WHERE user_id = $1 ORDER BY created_at DESC",
-        user_id
-    )
-    .fetch_all(&state.db)
-    .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    let creds = repository::list_credentials_info(&state.db, user_id)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     let items: Vec<CredentialItem> = creds
         .into_iter()
@@ -267,17 +263,11 @@ async fn update_credential(
     let user_id = Uuid::parse_str(cookie.value())
         .map_err(|_| (StatusCode::UNAUTHORIZED, "Invalid session".to_string()))?;
 
-    let res = sqlx::query!(
-        "UPDATE credentials SET name = $1 WHERE cred_id = $2 AND user_id = $3",
-        payload.name,
-        cred_id,
-        user_id
-    )
-    .execute(&state.db)
-    .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    let rows_affected = repository::update_credential_name(&state.db, &cred_id, user_id, &payload.name)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
-    if res.rows_affected() == 0 {
+    if rows_affected == 0 {
         return Err((StatusCode::NOT_FOUND, "Credential not found".to_string()));
     }
 
@@ -295,16 +285,11 @@ async fn delete_credential(
     let user_id = Uuid::parse_str(cookie.value())
         .map_err(|_| (StatusCode::UNAUTHORIZED, "Invalid session".to_string()))?;
 
-    let res = sqlx::query!(
-        "DELETE FROM credentials WHERE cred_id = $1 AND user_id = $2",
-        cred_id,
-        user_id
-    )
-    .execute(&state.db)
-    .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    let rows_affected = repository::delete_credential(&state.db, &cred_id, user_id)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
-    if res.rows_affected() == 0 {
+    if rows_affected == 0 {
         return Err((StatusCode::NOT_FOUND, "Credential not found".to_string()));
     }
 
@@ -321,24 +306,14 @@ async fn get_me(
     let user_id = Uuid::parse_str(cookie.value())
         .map_err(|_| (StatusCode::UNAUTHORIZED, "Invalid session".to_string()))?;
 
-    let user = sqlx::query!(
-        "SELECT id, username, created_at FROM users WHERE id = $1",
-        user_id
-    )
-    .fetch_optional(&state.db)
-    .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
-    .ok_or((StatusCode::UNAUTHORIZED, "User not found".to_string()))?;
+    let user = repository::get_user_info(&state.db, user_id)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
+        .ok_or((StatusCode::UNAUTHORIZED, "User not found".to_string()))?;
 
-    let cred_count = sqlx::query!(
-        "SELECT COUNT(*) as count FROM credentials WHERE user_id = $1",
-        user_id
-    )
-    .fetch_one(&state.db)
-    .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
-    .count
-    .unwrap_or(0);
+    let cred_count = repository::get_credential_count(&state.db, user_id)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     Ok(Json(UserProfileResponse {
         id: user.id,
