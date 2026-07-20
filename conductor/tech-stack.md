@@ -14,3 +14,4 @@
 - **Orchestration**: Kubernetes
 - **Local Deployment**: Minikube
 - **Database Operator**: CloudNativePG
+- **Database Migrations**: Executed via a dedicated Kubernetes Job using the `sqlx-cli` (Deviation recorded: 2026-07-19)
