@@ -1,7 +1,7 @@
 # Implementation Plan: MVP Initial Implementation
 
 ## Phase 1: Database Setup & Local Configuration
-- [ ] Task: Create initial database schema migrations for `users` and `credentials` tables via SQLx.
+- [x] Task: Create initial database schema migrations for `users` and `credentials` tables via SQLx. (commit: 41dafdc)
 - [ ] Task: Configure local PostgreSQL connection for the Axum backend.
 - [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
 
