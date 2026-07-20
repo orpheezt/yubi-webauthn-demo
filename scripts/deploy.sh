@@ -31,7 +31,7 @@ kubectl wait -n yubi --for=condition=complete job/yubi-migrations --timeout=120s
 
 kubectl apply -n yubi -f k8s/backend.yaml
 kubectl apply -n yubi -f k8s/frontend.yaml
-kubectl apply -n yubi -f k8s/ingress.yaml
+kubectl apply -n yubi -f k8s/gateway.yaml
 
 echo "=> Deployment complete!"
 echo "Ensure 'yubi.local' is mapped to your minikube IP in /etc/hosts"
