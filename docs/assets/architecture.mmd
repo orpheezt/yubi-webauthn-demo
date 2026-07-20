@@ -1,0 +1,41 @@
+graph TD
+    subgraph Client ["Client Layer"]
+        Browser["Web Browser"]
+        Authn["Authenticator / YubiKey (FIDO2 / WebAuthn)"]
+        ReactApp["React 19 SPA (Vite + TanStack Router)"]
+        SimpleWA["@simplewebauthn/browser"]
+
+        Browser --> ReactApp
+        ReactApp --> SimpleWA
+        SimpleWA <--> Authn
+    end
+
+    subgraph Infrastructure ["Ingress & Routing"]
+        Gateway["Gateway / Reverse Proxy (Port 80/443)"]
+    end
+
+    subgraph Backend ["Backend Service (Rust / Axum)"]
+        AxumServer["Axum Web Server (Port 8080)"]
+        AuthRoutes["Auth API Routes (/api/auth)"]
+        WebAuthnRS["webauthn-rs Library"]
+        Repo["DB Repository (sqlx)"]
+        CookieJar["PrivateCookieJar (Encrypted State)"]
+
+        AxumServer --> AuthRoutes
+        AuthRoutes --> WebAuthnRS
+        AuthRoutes --> Repo
+        AuthRoutes --> CookieJar
+    end
+
+    subgraph Storage ["Database Layer"]
+        Postgres[(PostgreSQL Database)]
+        UsersTable[("users table")]
+        CredsTable[("credentials table")]
+
+        Postgres --> UsersTable
+        Postgres --> CredsTable
+    end
+
+    ReactApp <-->|HTTP / JSON API| Gateway
+    Gateway <--> AxumServer
+    Repo <-->|SQL Queries| Postgres

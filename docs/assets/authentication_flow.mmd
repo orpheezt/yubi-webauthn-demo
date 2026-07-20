@@ -1,0 +1,27 @@
+sequenceDiagram
+    autonumber
+    actor User
+    participant Key as Authenticator (YubiKey)
+    participant Browser as Client (React + @simplewebauthn)
+    participant Backend as Axum Backend (webauthn-rs)
+    participant DB as PostgreSQL Database
+
+    User->>Browser: Enter username (optional) & Login
+    Browser->>Backend: POST /api/auth/login/start {username}
+    Backend->>DB: Fetch user credentials (or all if username empty)
+    DB-->>Backend: Return registered passkeys
+    Backend->>Backend: webauthn.start_passkey_authentication(...)
+    Backend-->>Browser: Return RequestChallengeResponse (RCR)<br/>Set-Cookie: webauthn_auth_state (Encrypted)
+
+    Browser->>Key: startAuthentication(rcr) via WebAuthn API
+    User->>Key: Touch YubiKey / PIN verification
+    Key->>Key: Sign Challenge with Private Key
+    Key-->>Browser: Return PublicKeyCredential (Assertion)
+
+    Browser->>Backend: POST /api/auth/login/finish {PublicKeyCredential}<br/>Cookie: webauthn_auth_state
+    Backend->>Backend: Decrypt cookie & extract PasskeyAuthentication
+    Backend->>Backend: webauthn.finish_passkey_authentication(...)
+    Backend->>DB: Query user_id by cred_id_b64
+    DB-->>Backend: Return user_id
+    Backend-->>Browser: HTTP 200 OK<br/>Set-Cookie: webauthn_session<br/>Clear-Cookie: webauthn_auth_state
+    Browser->>User: Authentication Success & User Logged In

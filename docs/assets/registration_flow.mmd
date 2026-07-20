@@ -1,0 +1,29 @@
+sequenceDiagram
+    autonumber
+    actor User
+    participant Key as Authenticator (YubiKey)
+    participant Browser as Client (React + @simplewebauthn)
+    participant Backend as Axum Backend (webauthn-rs)
+    participant DB as PostgreSQL Database
+
+    User->>Browser: Fill Register Form (username, key_name)
+    Browser->>Backend: POST /api/auth/register/start {username, key_name}
+    Backend->>DB: Query existing user & registered passkeys
+    DB-->>Backend: Return passkey descriptors (excludeCredentials)
+    Backend->>Backend: webauthn.start_passkey_registration(...)
+    Backend-->>Browser: Return CreationChallengeResponse (CCR)<br/>Set-Cookie: webauthn_reg_state (Encrypted)
+
+    Browser->>Key: startRegistration(ccr) via WebAuthn API
+    User->>Key: Touch YubiKey / PIN verification
+    Key->>Key: Generate Key Pair & Attestation Signature
+    Key-->>Browser: Return RegisterPublicKeyCredential
+
+    Browser->>Backend: POST /api/auth/register/finish {credential, name}<br/>Cookie: webauthn_reg_state
+    Backend->>Backend: Decrypt cookie & extract PasskeyRegistration
+    Backend->>Backend: webauthn.finish_passkey_registration(...)
+    Backend->>DB: Begin DB Transaction
+    Backend->>DB: INSERT INTO users IF NOT EXISTS
+    Backend->>DB: INSERT INTO credentials (cred_id, user_id, passkey_json, name)
+    Backend->>DB: Commit Transaction
+    Backend-->>Browser: HTTP 200 OK<br/>Set-Cookie: webauthn_session<br/>Clear-Cookie: webauthn_reg_state
+    Browser->>User: Registration Success & Authenticated Session
