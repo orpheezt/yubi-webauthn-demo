@@ -10,13 +10,13 @@
 - [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) [checkpoint: cf5c733]
 
 ## Phase 2: Refactor Database Access Layer
-- [ ] Task: Identify and isolate common DB logic
-  - [ ] Review `src/routes.rs` (or equivalent) for duplicated database queries/logic
-  - [ ] Create a new module (e.g., `src/repository.rs` or `src/db.rs`) if appropriate, and ensure tests cover the expected access patterns
-- [ ] Task: Implement shared DB components
-  - [ ] Extract the identified common database logic into the new shared functions
-  - [ ] Clean up redundant comments related to the extracted logic
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+- [x] 4a38aa6 Task: Identify and isolate common DB logic
+  - [x] Review `src/routes.rs` (or equivalent) for duplicated database queries/logic
+  - [x] Create a new module (e.g., `src/repository.rs` or `src/db.rs`) if appropriate, and ensure tests cover the expected access patterns
+- [x] 4a38aa6 Task: Implement shared DB components
+  - [x] Extract the identified common database logic into the new shared functions
+  - [x] Clean up redundant comments related to the extracted logic
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) [checkpoint: 4a38aa6]
 
 ## Phase 3: Refactor Axum Routes
 - [ ] Task: Update Route Handlers
