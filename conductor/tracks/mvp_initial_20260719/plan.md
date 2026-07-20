@@ -11,14 +11,15 @@
 - [x] Task: Implement Registration API endpoints. (commit: d9b4998)
 - [x] Task: Write tests for Authentication API endpoints (challenge and authenticate). (commit: ef4b233)
 - [x] Task: Implement Authentication API endpoints. (commit: 9bb8cba)
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md)
 
-## Phase 3: Frontend Testing Dashboard
+## Phase 3: Frontend WebAuthn UI (React/TanStack)
+- [ ] Task: Integrate WebAuthn library (`@simplewebauthn/browser`) into the React frontend.
 - [ ] Task: Scaffold a unified WebAuthn testing dashboard using Shadcn UI.
-- [ ] Task: Write tests for the Registration flow integration (`navigator.credentials.create`).
-- [ ] Task: Implement the Registration flow UI and API integration.
-- [ ] Task: Write tests for the Authentication flow integration (`navigator.credentials.get`).
-- [ ] Task: Implement the Authentication flow UI and API integration.
+- [ ] Task: Write tests for the Registration flow integration.
+- [ ] Task: Implement the Registration flow UI and wire to `/api/auth/register/*` endpoints.
+- [ ] Task: Write tests for the Authentication flow integration.
+- [ ] Task: Implement the Authentication flow UI and wire to `/api/auth/login/*` endpoints.
 - [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
 
 ## Phase 4: Containerization & Minikube Deployment
