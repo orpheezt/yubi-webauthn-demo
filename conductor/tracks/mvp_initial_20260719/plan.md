@@ -20,6 +20,12 @@
 - [x] Task: Implement the Authentication flow UI and wire to `/api/auth/login/*` endpoints. (commit: 7ac8a31)
 - [x] Task: Phase Verification & Checkpoint (Refer to workflow.md)
 
+## Phase 3.5: Frontend State & Validation
+- [ ] Task: Install `zod`, `@hookform/resolvers`, and `react-hook-form` for robust form handling.
+- [ ] Task: Install `@tanstack/react-query` to manage API requests and caching state.
+- [ ] Task: Refactor the WebAuthn Testing Dashboard to use form validation and React Query mutations.
+- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+
 ## Phase 4: Containerization & Minikube Deployment
 - [ ] Task: Create containerization definitions (`Containerfile`) for frontend and backend for `buildah`.
 - [ ] Task: Create Kubernetes deployment manifests in `frontend/k8s/` and `backend/k8s/` (including CloudNativePG single-node instance).
