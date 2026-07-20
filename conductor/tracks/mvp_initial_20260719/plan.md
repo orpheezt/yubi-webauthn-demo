@@ -27,7 +27,7 @@
 - [x] Task: Phase Verification & Checkpoint (Refer to workflow.md)
 
 ## Phase 4: Containerization & Minikube Deployment
-- [ ] Task: Create containerization definitions (`Containerfile`) for frontend and backend for `buildah`.
-- [ ] Task: Create Kubernetes deployment manifests in `frontend/k8s/` and `backend/k8s/` (including CloudNativePG single-node instance).
-- [ ] Task: Create `scripts/deploy.sh` for local Minikube orchestration (build, load, apply).
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+- [x] Task: Create containerization definitions (`Containerfile`) for frontend and backend for `buildah`. (commit: b410a5c)
+- [x] Task: Create Kubernetes deployment manifests in `frontend/k8s/` and `backend/k8s/` (including CloudNativePG single-node instance). (commit: a6bed94)
+- [x] Task: Create `scripts/deploy.sh` for local Minikube orchestration (build, load, apply). (commit: ae103b4)
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md)
