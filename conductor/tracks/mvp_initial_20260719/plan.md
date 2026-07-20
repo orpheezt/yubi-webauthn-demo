@@ -2,7 +2,7 @@
 
 ## Phase 1: Database Setup & Local Configuration
 - [x] Task: Create initial database schema migrations for `users` and `credentials` tables via SQLx. (commit: 41dafdc)
-- [ ] Task: Configure local PostgreSQL connection for the Axum backend.
+- [x] Task: Configure local PostgreSQL connection for the Axum backend. (commit: 3a6a016)
 - [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
 
 ## Phase 2: Backend WebAuthn Logic
