@@ -21,9 +21,9 @@
 - [x] Task: Phase Verification & Checkpoint (Refer to workflow.md)
 
 ## Phase 3.5: Frontend State & Validation
-- [ ] Task: Install `zod`, `@hookform/resolvers`, and `react-hook-form` for robust form handling.
-- [ ] Task: Install `@tanstack/react-query` to manage API requests and caching state.
-- [ ] Task: Refactor the WebAuthn Testing Dashboard to use form validation and React Query mutations.
+- [x] Task: Install `zod`, `@hookform/resolvers`, and `react-hook-form` for robust form handling. (commit: 4132c51)
+- [x] Task: Install `@tanstack/react-query` to manage API requests and caching state. (commit: 4132c51)
+- [~] Task: Refactor the WebAuthn Testing Dashboard to use form validation and React Query mutations.
 - [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
 
 ## Phase 4: Containerization & Minikube Deployment
