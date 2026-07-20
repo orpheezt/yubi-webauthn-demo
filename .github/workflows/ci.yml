@@ -94,14 +94,35 @@ jobs:
   container-build:
     name: Container Images Build Check
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18.4-trixie
+        env:
+          POSTGRES_PASSWORD: secret
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - uses: actions/checkout@v7.0.1
 
       - name: Install Buildah
         run: sudo apt-get update && sudo apt-get install -y buildah
 
+      - name: Install psql client & apply migrations
+        run: |
+          sudo apt-get update && sudo apt-get install -y postgresql-client
+          for f in migrations/*.up.sql; do
+            PGPASSWORD=secret psql -h localhost -U postgres -d postgres -f "$f"
+          done
+
       - name: Build Backend Image
-        run: sudo buildah bud -t yubi-backend:latest -f backend/Containerfile backend/
+        run: sudo buildah bud --network=host --build-arg DATABASE_URL="postgres://postgres:secret@127.0.0.1:5432/postgres" -t yubi-backend:latest -f backend/Containerfile backend/
 
       - name: Build Frontend Image
         run: sudo buildah bud -t yubi-frontend:latest -f frontend/Containerfile frontend/

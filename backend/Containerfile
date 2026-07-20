@@ -13,8 +13,8 @@ RUN apk add --no-cache clang lld musl-dev pkgconfig openssl-dev openssl-libs-sta
 
 COPY . .
 
-ENV SQLX_OFFLINE=true
-ENV SQLX_OFFLINE_DIR=/app/.sqlx
+ARG DATABASE_URL
+ENV DATABASE_URL=$DATABASE_URL
 
 RUN --mount=type=cache,target=/app/target/ \
     --mount=type=cache,target=/usr/local/cargo/git/db \
