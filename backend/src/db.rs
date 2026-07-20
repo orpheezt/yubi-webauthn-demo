@@ -20,7 +20,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_db_connection() -> Result<(), String> {
-        let pg_tag = std::env::var("TEST_POSTGRES_TAG").unwrap_or_else(|_| "16-alpine".to_string());
+        let pg_tag = std::env::var("TEST_POSTGRES_TAG").unwrap_or_else(|_| "18.4-trixie".to_string());
         let node = match Postgres::default().with_tag(&pg_tag).start().await {
             Ok(n) => n,
             Err(err) => return Err(format!("Failed to start test container: {}", err)),

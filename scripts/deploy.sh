@@ -16,8 +16,10 @@ buildah push --compression-format zstd yubi-backend:latest oci-archive:backend.t
 buildah push --compression-format zstd yubi-migrations:latest oci-archive:migrations.tar.zst && minikube image load migrations.tar.zst
 buildah push --compression-format zstd yubi-frontend:latest oci-archive:frontend.tar.zst && minikube image load frontend.tar.zst
 
-echo "=> Installing CloudNativePG operator..."
-kubectl apply --server-side -f https://raw.githubusercontent.com/cloudnative-pg/cloudnative-pg/release-1.22/releases/cnpg-1.22.1.yaml
+echo "=> Installing CloudNativePG operator via Helm..."
+helm repo add cnpg https://cloudnative-pg.github.io/charts
+helm repo update
+helm upgrade --install cnpg cnpg/cloudnative-pg --namespace cnpg-system --create-namespace
 kubectl wait --for=condition=Ready pod -l app.kubernetes.io/name=cloudnative-pg -n cnpg-system --timeout=120s || true
 
 echo "=> Creating 'yubi' namespace..."
@@ -25,7 +27,7 @@ kubectl create namespace yubi --dry-run=client -o yaml | kubectl apply -f -
 
 echo "=> Applying Kubernetes manifests..."
 kubectl apply -n yubi -f k8s/postgres.yaml
-# wait for postgres to be ready
+
 echo "=> Waiting for CloudNativePG cluster to be ready..."
 kubectl wait -n yubi --for=condition=Ready cluster/yubi-pg --timeout=300s || true
 

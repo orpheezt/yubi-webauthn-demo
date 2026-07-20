@@ -4,17 +4,19 @@ import { Button } from '#/components/ui/button'
 import { Input } from '#/components/ui/input'
 import { toast } from 'sonner'
 import { startRegistration, startAuthentication } from '@simplewebauthn/browser'
-import { Fingerprint, KeyRound, UserRoundPlus, LogOut, ShieldCheck, User, Calendar, Key } from 'lucide-react'
+import { Fingerprint, KeyRound, UserRoundPlus, LogOut, ShieldCheck, User, Calendar, Key, Trash2, Pencil, Check, X } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '#/components/ui/form'
+import { useState } from 'react'
 
 export const Route = createFileRoute('/')({ component: Home })
 
 const authSchema = z.object({
   username: z.string().email('Please enter a valid email address as your username.'),
+  keyName: z.string().optional(),
 })
 
 interface UserProfile {
@@ -24,18 +26,27 @@ interface UserProfile {
   credentials_count: number
 }
 
+interface CredentialItem {
+  cred_id: string
+  name: string
+  created_at: string
+}
+
 function Home() {
   const queryClient = useQueryClient()
+  const [editingCredId, setEditingCredId] = useState<string | null>(null)
+  const [editName, setEditName] = useState('')
 
   const form = useForm<z.infer<typeof authSchema>>({
     resolver: zodResolver(authSchema),
     defaultValues: {
       username: '',
+      keyName: '',
     },
   })
 
   // User Session Query
-  const { data: user, isLoading: isUserLoading } = useQuery<UserProfile | null>({
+  const { data: user } = useQuery<UserProfile | null>({
     queryKey: ['user-me'],
     queryFn: async () => {
       const res = await fetch('/api/auth/me')
@@ -46,12 +57,23 @@ function Home() {
     retry: false,
   })
 
+  // Registered Passkeys Query
+  const { data: credentials = [] } = useQuery<CredentialItem[]>({
+    queryKey: ['user-credentials'],
+    queryFn: async () => {
+      const res = await fetch('/api/auth/credentials')
+      if (!res.ok) return []
+      return res.json()
+    },
+    enabled: !!user,
+  })
+
   const registerMutation = useMutation({
-    mutationFn: async (username: string) => {
+    mutationFn: async ({ username, keyName }: { username: string; keyName?: string }) => {
       const startRes = await fetch('/api/auth/register/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username })
+        body: JSON.stringify({ username, key_name: keyName })
       })
       if (!startRes.ok) throw new Error('Failed to start registration')
       const options = await startRes.json()
@@ -61,7 +83,10 @@ function Home() {
       const finishRes = await fetch('/api/auth/register/finish', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(attResp)
+        body: JSON.stringify({
+          ...attResp,
+          name: keyName || 'Security Key'
+        })
       })
       if (!finishRes.ok) throw new Error('Registration verification failed')
     },
@@ -69,6 +94,7 @@ function Home() {
     onSuccess: () => {
       toast.success('Registration successful!')
       queryClient.invalidateQueries({ queryKey: ['user-me'] })
+      queryClient.invalidateQueries({ queryKey: ['user-credentials'] })
     },
     onError: (err: any) => {
       if (err.name === 'NotAllowedError') {
@@ -102,6 +128,7 @@ function Home() {
     onSuccess: () => {
       toast.success('Authentication successful! Welcome back.')
       queryClient.invalidateQueries({ queryKey: ['user-me'] })
+      queryClient.invalidateQueries({ queryKey: ['user-credentials'] })
     },
     onError: (err: any) => {
       if (err.name === 'NotAllowedError') {
@@ -112,6 +139,38 @@ function Home() {
     }
   })
 
+  const updateCredentialMutation = useMutation({
+    mutationFn: async ({ cred_id, name }: { cred_id: string; name: string }) => {
+      const res = await fetch(`/api/auth/credentials/${encodeURIComponent(cred_id)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name }),
+      })
+      if (!res.ok) throw new Error('Failed to rename passkey')
+    },
+    onSuccess: () => {
+      toast.success('Passkey renamed successfully')
+      setEditingCredId(null)
+      queryClient.invalidateQueries({ queryKey: ['user-credentials'] })
+    },
+    onError: (err: any) => toast.error(err.message || 'Failed to rename passkey'),
+  })
+
+  const deleteCredentialMutation = useMutation({
+    mutationFn: async (cred_id: string) => {
+      const res = await fetch(`/api/auth/credentials/${encodeURIComponent(cred_id)}`, {
+        method: 'DELETE',
+      })
+      if (!res.ok) throw new Error('Failed to revoke passkey')
+    },
+    onSuccess: () => {
+      toast.success('Passkey revoked')
+      queryClient.invalidateQueries({ queryKey: ['user-me'] })
+      queryClient.invalidateQueries({ queryKey: ['user-credentials'] })
+    },
+    onError: (err: any) => toast.error(err.message || 'Failed to revoke passkey'),
+  })
+
   const logoutMutation = useMutation({
     mutationFn: async () => {
       const res = await fetch('/api/auth/logout', { method: 'POST' })
@@ -120,6 +179,7 @@ function Home() {
     onSuccess: () => {
       toast.success('Logged out successfully')
       queryClient.setQueryData(['user-me'], null)
+      queryClient.setQueryData(['user-credentials'], [])
       form.reset()
     },
     onError: (err: any) => toast.error(err.message || 'Logout failed'),
@@ -128,7 +188,7 @@ function Home() {
   const isLoading = registerMutation.isPending || loginMutation.isPending || logoutMutation.isPending
 
   const onSubmitRegister = (values: z.infer<typeof authSchema>) => {
-    registerMutation.mutate(values.username)
+    registerMutation.mutate({ username: values.username, keyName: values.keyName })
   }
 
   const onLogin = () => {
@@ -173,7 +233,7 @@ function Home() {
               </div>
             </CardHeader>
 
-            <CardContent className="p-6 space-y-4">
+            <CardContent className="p-6 space-y-6">
               <div className="space-y-3 text-sm">
                 <div className="p-3 rounded-lg bg-slate-100 dark:bg-zinc-800 space-y-1">
                   <div className="flex items-center text-slate-600 dark:text-slate-400 text-xs font-medium">
@@ -187,22 +247,87 @@ function Home() {
 
                 <div className="flex items-center justify-between p-3 rounded-lg bg-slate-100 dark:bg-zinc-800">
                   <div className="flex items-center text-slate-600 dark:text-slate-400">
-                    <Key className="w-4 h-4 mr-2" />
-                    Registered Passkeys
-                  </div>
-                  <span className="font-semibold text-slate-900 dark:text-slate-200">
-                    {user.credentials_count}
-                  </span>
-                </div>
-
-                <div className="flex items-center justify-between p-3 rounded-lg bg-slate-100 dark:bg-zinc-800">
-                  <div className="flex items-center text-slate-600 dark:text-slate-400">
                     <Calendar className="w-4 h-4 mr-2" />
                     Member Since
                   </div>
                   <span className="text-slate-900 dark:text-slate-200">
                     {new Date(user.created_at).toLocaleDateString()}
                   </span>
+                </div>
+              </div>
+
+              {/* Passkeys Management Section */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 flex items-center">
+                    <Key className="w-4 h-4 mr-2 text-blue-600 dark:text-blue-400" />
+                    Registered Passkeys ({credentials.length})
+                  </h3>
+                </div>
+
+                <div className="space-y-2">
+                  {credentials.map((cred) => (
+                    <div key={cred.cred_id} className="p-3 rounded-lg bg-slate-100 dark:bg-zinc-800 flex items-center justify-between">
+                      {editingCredId === cred.cred_id ? (
+                        <div className="flex items-center space-x-2 w-full">
+                          <Input
+                            value={editName}
+                            onChange={(e) => setEditName(e.target.value)}
+                            className="h-8 text-xs bg-white dark:bg-zinc-900"
+                            placeholder="Key nickname"
+                          />
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-8 w-8 text-green-600"
+                            onClick={() => updateCredentialMutation.mutate({ cred_id: cred.cred_id, name: editName })}
+                          >
+                            <Check className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-8 w-8 text-slate-400"
+                            onClick={() => setEditingCredId(null)}
+                          >
+                            <X className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <>
+                          <div>
+                            <div className="font-medium text-xs text-slate-900 dark:text-slate-100">{cred.name}</div>
+                            <div className="text-[10px] text-slate-500 dark:text-slate-400">
+                              Added {new Date(cred.created_at).toLocaleDateString()}
+                            </div>
+                          </div>
+                          <div className="flex items-center space-x-1">
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-7 w-7 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                              onClick={() => {
+                                setEditingCredId(cred.cred_id)
+                                setEditName(cred.name)
+                              }}
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-7 w-7 text-red-500 hover:text-red-700 dark:hover:text-red-400"
+                              onClick={() => deleteCredentialMutation.mutate(cred.cred_id)}
+                              disabled={credentials.length <= 1}
+                              title={credentials.length <= 1 ? "Cannot delete your only passkey" : "Revoke Passkey"}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  ))}
                 </div>
               </div>
             </CardContent>
@@ -238,6 +363,19 @@ function Home() {
                         <FormLabel>Username</FormLabel>
                         <FormControl>
                           <Input placeholder="alice@example.com" disabled={isLoading} {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="keyName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Passkey Nickname (Optional)</FormLabel>
+                        <FormControl>
+                          <Input placeholder="e.g. Work YubiKey 5C" disabled={isLoading} {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>

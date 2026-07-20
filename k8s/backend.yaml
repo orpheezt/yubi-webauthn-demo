@@ -37,6 +37,18 @@ spec:
         imagePullPolicy: Never
         ports:
         - containerPort: 8080
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
         envFrom:
         - configMapRef:
             name: yubi-backend-config

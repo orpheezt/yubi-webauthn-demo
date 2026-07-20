@@ -3,6 +3,7 @@ kind: Cluster
 metadata:
   name: yubi-pg
 spec:
+  imageName: docker.io/library/postgres:18.4-trixie
   instances: 1
   storage:
     size: 1Gi

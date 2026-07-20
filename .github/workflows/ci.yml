@@ -1,0 +1,97 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  backend-test:
+    name: Backend Tests & Linting
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18.4-trixie
+        env:
+          POSTGRES_PASSWORD: secret
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: stable
+          components: clippy, rustfmt
+
+      - name: Cache Cargo dependencies
+        uses: Swatinem/rust-cache@v2.9.1
+        with:
+          workspaces: backend -> target
+
+      - name: Install psql client & apply migrations
+        run: |
+          sudo apt-get update && sudo apt-get install -y postgresql-client
+          for f in migrations/*.up.sql; do
+            PGPASSWORD=secret psql -h localhost -U postgres -d postgres -f "$f"
+          done
+
+      - name: Cargo Check
+        run: |
+          cd backend
+          DATABASE_URL="postgres://postgres:secret@localhost:5432/postgres" cargo check --locked
+
+      - name: Cargo Clippy
+        run: |
+          cd backend
+          DATABASE_URL="postgres://postgres:secret@localhost:5432/postgres" cargo clippy -- -D warnings
+
+      - name: Cargo Test
+        run: |
+          cd backend
+          DATABASE_URL="postgres://postgres:secret@localhost:5432/postgres" cargo test
+
+  frontend-build:
+    name: Frontend Typecheck & Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2.2.0
+        with:
+          bun-version: "1.3.14"
+
+      - name: Install dependencies
+        run: |
+          cd frontend
+          bun install --frozen-lockfile
+
+      - name: Build frontend
+        run: |
+          cd frontend
+          bun run build
+
+  container-build:
+    name: Container Images Build Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      - name: Install Buildah
+        run: sudo apt-get update && sudo apt-get install -y buildah
+
+      - name: Build Backend Image
+        run: buildah bud -t yubi-backend:latest -f backend/Containerfile backend/
+
+      - name: Build Frontend Image
+        run: buildah bud -t yubi-frontend:latest -f frontend/Containerfile frontend/

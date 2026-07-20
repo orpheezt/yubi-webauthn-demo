@@ -21,8 +21,22 @@ impl axum::extract::FromRef<AppState> for axum_extra::extract::cookie::Key {
     }
 }
 
+async fn healthz() -> impl axum::response::IntoResponse {
+    axum::http::StatusCode::OK
+}
+
+async fn readyz(axum::extract::State(state): axum::extract::State<AppState>) -> Result<impl axum::response::IntoResponse, (axum::http::StatusCode, String)> {
+    sqlx::query("SELECT 1")
+        .execute(&state.db)
+        .await
+        .map_err(|e| (axum::http::StatusCode::SERVICE_UNAVAILABLE, e.to_string()))?;
+    Ok(axum::http::StatusCode::OK)
+}
+
 fn root_router(state: AppState) -> Router {
     Router::new()
+        .route("/healthz", axum::routing::get(healthz))
+        .route("/readyz", axum::routing::get(readyz))
         .nest("/api/auth", routes::auth_routes())
         .with_state(state)
 }

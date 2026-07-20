@@ -1,11 +1,11 @@
 use axum::{
-    extract::State,
+    extract::{Path, State},
     http::StatusCode,
     response::{IntoResponse, Json},
-    routing::{get, post},
+    routing::{delete, get, patch, post},
     Router,
 };
-use axum_extra::extract::cookie::{Cookie, PrivateCookieJar};
+use axum_extra::extract::cookie::{Cookie, SameSite, PrivateCookieJar};
 use serde::{Deserialize, Serialize};
 use webauthn_rs::prelude::*;
 use crate::AppState;
@@ -18,11 +18,15 @@ pub fn auth_routes() -> Router<AppState> {
         .route("/login/finish", post(login_finish))
         .route("/me", get(get_me))
         .route("/logout", post(logout))
+        .route("/credentials", get(list_credentials))
+        .route("/credentials/{cred_id}", patch(update_credential))
+        .route("/credentials/{cred_id}", delete(delete_credential))
 }
 
 #[derive(Deserialize)]
 struct RegisterStartRequest {
     username: String,
+    key_name: Option<String>,
 }
 
 const REG_COOKIE_NAME: &str = "webauthn_reg_state";
@@ -32,19 +36,50 @@ async fn register_start(
     jar: PrivateCookieJar,
     Json(payload): Json<RegisterStartRequest>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
-    // Generate a random ID for the user's registration flow
-    let user_unique_id = Uuid::new_v4();
-    
-    // In a real app, you would fetch existing credentials to exclude them.
-    // For MVP, we'll exclude nothing for simplicity, or we could look up the user.
-    let exclude_credentials = Some(vec![]);
+    let display_name = match &payload.key_name {
+        Some(k) if !k.trim().is_empty() => format!("{} ({})", payload.username, k),
+        _ => payload.username.clone(),
+    };
+
+    let (user_unique_id, exclude_credentials) = match sqlx::query!(
+        "SELECT id FROM users WHERE username = $1",
+        payload.username
+    )
+    .fetch_optional(&state.db)
+    .await
+    .map_err(|e| {
+        tracing::error!("Failed to query user: {:?}", e);
+        (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
+    })? {
+        Some(user) => {
+            let creds = sqlx::query!("SELECT passkey_json FROM credentials WHERE user_id = $1", user.id)
+                .fetch_all(&state.db)
+                .await
+                .map_err(|e| {
+                    tracing::error!("Failed to fetch user credentials: {:?}", e);
+                    (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
+                })?;
+
+            let mut descriptor_vec = Vec::new();
+            for c in creds {
+                let pk: Passkey = serde_json::from_value(c.passkey_json).map_err(|e| {
+                    tracing::error!("Failed to deserialize passkey: {:?}", e);
+                    (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
+                })?;
+                descriptor_vec.push(pk.cred_id().clone());
+            }
+
+            (user.id, Some(descriptor_vec))
+        }
+        None => (Uuid::new_v4(), Some(vec![])),
+    };
 
     let (ccr, reg_state) = state
         .webauthn
         .start_passkey_registration(
             user_unique_id,
             &payload.username,
-            &payload.username,
+            &display_name,
             exclude_credentials,
         )
         .map_err(|e| {
@@ -87,10 +122,17 @@ struct RegCookieState {
     state: PasskeyRegistration,
 }
 
+#[derive(Deserialize)]
+struct RegisterFinishPayload {
+    #[serde(flatten)]
+    credential: RegisterPublicKeyCredential,
+    name: Option<String>,
+}
+
 async fn register_finish(
     State(state): State<AppState>,
     jar: PrivateCookieJar,
-    Json(payload): Json<RegisterPublicKeyCredential>,
+    Json(payload): Json<RegisterFinishPayload>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
     tracing::info!("register_finish called");
     let cookie = jar.get(REG_COOKIE_NAME)
@@ -107,7 +149,7 @@ async fn register_finish(
 
     let passkey = state
         .webauthn
-        .finish_passkey_registration(&payload, &cookie_state.state)
+        .finish_passkey_registration(&payload.credential, &cookie_state.state)
         .map_err(|e| {
             tracing::error!("finish_passkey_registration error: {:?}", e);
             (StatusCode::BAD_REQUEST, e.to_string())
@@ -156,12 +198,14 @@ async fn register_finish(
     };
 
     let cred_id_b64 = base64::Engine::encode(&base64::engine::general_purpose::URL_SAFE_NO_PAD, passkey.cred_id());
+    let passkey_name = payload.name.unwrap_or_else(|| "Security Key".to_string());
 
     if let Err(e) = sqlx::query!(
-        "INSERT INTO credentials (cred_id, user_id, passkey_json) VALUES ($1, $2, $3)",
+        "INSERT INTO credentials (cred_id, user_id, passkey_json, name) VALUES ($1, $2, $3, $4)",
         cred_id_b64,
         user_record.id,
-        passkey_json
+        passkey_json,
+        passkey_name
     )
     .execute(&mut *tx)
     .await {
@@ -175,15 +219,21 @@ async fn register_finish(
     }
 
     tracing::info!("Successfully registered passkey for user: {}", cookie_state.username);
-    let session_cookie = Cookie::build((SESSION_COOKIE_NAME, user_record.id.to_string()))
-        .path("/")
-        .http_only(true)
-        .build();
+    let session_cookie = create_session_cookie(user_record.id.to_string());
     let updated_jar = jar.remove(Cookie::from(REG_COOKIE_NAME)).add(session_cookie);
     Ok((updated_jar, StatusCode::OK))
 }
 
 const SESSION_COOKIE_NAME: &str = "webauthn_session";
+
+fn create_session_cookie(user_id: String) -> Cookie<'static> {
+    Cookie::build((SESSION_COOKIE_NAME, user_id))
+        .path("/")
+        .http_only(true)
+        .same_site(SameSite::Lax)
+        .max_age(time::Duration::hours(24))
+        .build()
+}
 
 #[derive(Serialize)]
 struct UserProfileResponse {
@@ -191,6 +241,104 @@ struct UserProfileResponse {
     username: String,
     created_at: String,
     credentials_count: i64,
+}
+
+#[derive(Serialize)]
+struct CredentialItem {
+    cred_id: String,
+    name: String,
+    created_at: String,
+}
+
+#[derive(Deserialize)]
+struct UpdateCredentialRequest {
+    name: String,
+}
+
+async fn list_credentials(
+    State(state): State<AppState>,
+    jar: PrivateCookieJar,
+) -> Result<impl IntoResponse, (StatusCode, String)> {
+    let cookie = jar.get(SESSION_COOKIE_NAME)
+        .ok_or((StatusCode::UNAUTHORIZED, "Not authenticated".to_string()))?;
+
+    let user_id = Uuid::parse_str(cookie.value())
+        .map_err(|_| (StatusCode::UNAUTHORIZED, "Invalid session".to_string()))?;
+
+    let creds = sqlx::query!(
+        "SELECT cred_id, name, created_at FROM credentials WHERE user_id = $1 ORDER BY created_at DESC",
+        user_id
+    )
+    .fetch_all(&state.db)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    let items: Vec<CredentialItem> = creds
+        .into_iter()
+        .map(|c| CredentialItem {
+            cred_id: c.cred_id,
+            name: c.name,
+            created_at: c.created_at.to_rfc3339(),
+        })
+        .collect();
+
+    Ok(Json(items))
+}
+
+async fn update_credential(
+    State(state): State<AppState>,
+    jar: PrivateCookieJar,
+    Path(cred_id): Path<String>,
+    Json(payload): Json<UpdateCredentialRequest>,
+) -> Result<impl IntoResponse, (StatusCode, String)> {
+    let cookie = jar.get(SESSION_COOKIE_NAME)
+        .ok_or((StatusCode::UNAUTHORIZED, "Not authenticated".to_string()))?;
+
+    let user_id = Uuid::parse_str(cookie.value())
+        .map_err(|_| (StatusCode::UNAUTHORIZED, "Invalid session".to_string()))?;
+
+    let res = sqlx::query!(
+        "UPDATE credentials SET name = $1 WHERE cred_id = $2 AND user_id = $3",
+        payload.name,
+        cred_id,
+        user_id
+    )
+    .execute(&state.db)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    if res.rows_affected() == 0 {
+        return Err((StatusCode::NOT_FOUND, "Credential not found".to_string()));
+    }
+
+    Ok(StatusCode::OK)
+}
+
+async fn delete_credential(
+    State(state): State<AppState>,
+    jar: PrivateCookieJar,
+    Path(cred_id): Path<String>,
+) -> Result<impl IntoResponse, (StatusCode, String)> {
+    let cookie = jar.get(SESSION_COOKIE_NAME)
+        .ok_or((StatusCode::UNAUTHORIZED, "Not authenticated".to_string()))?;
+
+    let user_id = Uuid::parse_str(cookie.value())
+        .map_err(|_| (StatusCode::UNAUTHORIZED, "Invalid session".to_string()))?;
+
+    let res = sqlx::query!(
+        "DELETE FROM credentials WHERE cred_id = $1 AND user_id = $2",
+        cred_id,
+        user_id
+    )
+    .execute(&state.db)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    if res.rows_affected() == 0 {
+        return Err((StatusCode::NOT_FOUND, "Credential not found".to_string()));
+    }
+
+    Ok(StatusCode::OK)
 }
 
 async fn get_me(
@@ -369,10 +517,7 @@ async fn login_finish(
         })?;
         
     tracing::info!("login_finish successful!");
-    let session_cookie = Cookie::build((SESSION_COOKIE_NAME, cred_record.user_id.to_string()))
-        .path("/")
-        .http_only(true)
-        .build();
+    let session_cookie = create_session_cookie(cred_record.user_id.to_string());
     let updated_jar = jar.remove(Cookie::from(AUTH_COOKIE_NAME)).add(session_cookie);
     
     Ok((updated_jar, StatusCode::OK))
@@ -393,7 +538,7 @@ mod tests {
     use axum_extra::extract::cookie::Key;
 
     async fn setup_test_app() -> Result<(Router, String), Box<dyn std::error::Error>> {
-        let pg_tag = std::env::var("TEST_POSTGRES_TAG").unwrap_or_else(|_| "16-alpine".to_string());
+        let pg_tag = std::env::var("TEST_POSTGRES_TAG").unwrap_or_else(|_| "18.4-trixie".to_string());
         let node = Postgres::default().with_tag(&pg_tag).start().await?;
         let port = node.get_host_port_ipv4(5432).await?;
         let connection_string = format!("postgres://postgres:postgres@127.0.0.1:{}/postgres", port);
