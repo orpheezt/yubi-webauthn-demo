@@ -80,16 +80,56 @@ async fn register_finish(
 }
 
 #[derive(Deserialize)]
+#[allow(dead_code)]
 struct LoginStartRequest {
     username: String,
 }
 
-async fn login_start() -> Result<(), (StatusCode, String)> {
-    Err((StatusCode::NOT_IMPLEMENTED, "Not implemented".to_string()))
+const AUTH_COOKIE_NAME: &str = "webauthn_auth_state";
+
+async fn login_start(
+    State(state): State<AppState>,
+    jar: PrivateCookieJar,
+    Json(_payload): Json<LoginStartRequest>,
+) -> Result<impl IntoResponse, (StatusCode, String)> {
+    let allow_credentials: &[Passkey] = &[];
+
+    let (rcr, auth_state) = state
+        .webauthn
+        .start_passkey_authentication(allow_credentials)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    let serialized_state = serde_json::to_string(&auth_state)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+        
+    let cookie = Cookie::build((AUTH_COOKIE_NAME, serialized_state))
+        .path("/")
+        .http_only(true)
+        .build();
+
+    let updated_jar = jar.add(cookie);
+    Ok((updated_jar, Json(rcr)))
 }
 
-async fn login_finish() -> Result<(), (StatusCode, String)> {
-    Err((StatusCode::NOT_IMPLEMENTED, "Not implemented".to_string()))
+async fn login_finish(
+    State(state): State<AppState>,
+    jar: PrivateCookieJar,
+    Json(payload): Json<PublicKeyCredential>,
+) -> Result<impl IntoResponse, (StatusCode, String)> {
+    let cookie = jar.get(AUTH_COOKIE_NAME)
+        .ok_or((StatusCode::BAD_REQUEST, "Missing authentication state cookie".to_string()))?;
+        
+    let auth_state: PasskeyAuthentication = serde_json::from_str(cookie.value())
+        .map_err(|_| (StatusCode::BAD_REQUEST, "Invalid authentication state".to_string()))?;
+
+    let _auth_result = state
+        .webauthn
+        .finish_passkey_authentication(&payload, &auth_state)
+        .map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))?;
+        
+    let updated_jar = jar.remove(Cookie::from(AUTH_COOKIE_NAME));
+    
+    Ok((updated_jar, StatusCode::OK))
 }
 
 #[cfg(test)]
