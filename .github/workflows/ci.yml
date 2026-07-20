@@ -101,7 +101,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y buildah
 
       - name: Build Backend Image
-        run: buildah bud -t yubi-backend:latest -f backend/Containerfile backend/
+        run: sudo buildah bud -t yubi-backend:latest -f backend/Containerfile backend/
 
       - name: Build Frontend Image
-        run: buildah bud -t yubi-frontend:latest -f frontend/Containerfile frontend/
+        run: sudo buildah bud -t yubi-frontend:latest -f frontend/Containerfile frontend/
