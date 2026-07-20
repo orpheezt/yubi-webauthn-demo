@@ -15,6 +15,12 @@ pub struct AppState {
     pub cookie_key: axum_extra::extract::cookie::Key,
 }
 
+impl axum::extract::FromRef<AppState> for axum_extra::extract::cookie::Key {
+    fn from_ref(state: &AppState) -> Self {
+        state.cookie_key.clone()
+    }
+}
+
 fn root_router(state: AppState) -> Router {
     Router::new()
         .nest("/api/auth", routes::auth_routes())

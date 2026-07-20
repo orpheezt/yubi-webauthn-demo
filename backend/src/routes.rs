@@ -1,7 +1,13 @@
 use axum::{
+    extract::State,
+    http::StatusCode,
+    response::{IntoResponse, Json},
     routing::post,
     Router,
 };
+use axum_extra::extract::cookie::{Cookie, PrivateCookieJar};
+use serde::Deserialize;
+use webauthn_rs::prelude::*;
 use crate::AppState;
 
 pub fn auth_routes() -> Router<AppState> {
@@ -10,12 +16,65 @@ pub fn auth_routes() -> Router<AppState> {
         .route("/register/finish", post(register_finish))
 }
 
-async fn register_start() -> axum::response::Html<&'static str> {
-    todo!("Implement register_start")
+#[derive(Deserialize)]
+struct RegisterStartRequest {
+    username: String,
 }
 
-async fn register_finish() -> axum::response::Html<&'static str> {
-    todo!("Implement register_finish")
+const REG_COOKIE_NAME: &str = "webauthn_reg_state";
+
+async fn register_start(
+    State(state): State<AppState>,
+    jar: PrivateCookieJar,
+    Json(payload): Json<RegisterStartRequest>,
+) -> Result<impl IntoResponse, (StatusCode, String)> {
+    // Generate a random ID for the user's registration flow
+    let user_unique_id = Uuid::new_v4();
+    
+    let exclude_credentials = Some(vec![]);
+
+    let (ccr, reg_state) = state
+        .webauthn
+        .start_passkey_registration(
+            user_unique_id,
+            &payload.username,
+            &payload.username,
+            exclude_credentials,
+        )
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    let serialized_state = serde_json::to_string(&reg_state)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+        
+    let cookie = Cookie::build((REG_COOKIE_NAME, serialized_state))
+        .path("/")
+        .http_only(true)
+        .build();
+
+    let updated_jar = jar.add(cookie);
+    Ok((updated_jar, Json(ccr)))
+}
+
+async fn register_finish(
+    State(state): State<AppState>,
+    jar: PrivateCookieJar,
+    Json(payload): Json<RegisterPublicKeyCredential>,
+) -> Result<impl IntoResponse, (StatusCode, String)> {
+    let cookie = jar.get(REG_COOKIE_NAME)
+        .ok_or((StatusCode::BAD_REQUEST, "Missing registration state cookie".to_string()))?;
+        
+    let reg_state: PasskeyRegistration = serde_json::from_str(cookie.value())
+        .map_err(|_| (StatusCode::BAD_REQUEST, "Invalid registration state".to_string()))?;
+
+    let _passkey = state
+        .webauthn
+        .finish_passkey_registration(&payload, &reg_state)
+        .map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))?;
+        
+    // We clear the cookie since the registration is done
+    let updated_jar = jar.remove(Cookie::from(REG_COOKIE_NAME));
+    
+    Ok((updated_jar, StatusCode::OK))
 }
 
 #[cfg(test)]
@@ -83,7 +142,15 @@ mod tests {
             .method("POST")
             .uri("/api/auth/register/finish")
             .header("Content-Type", "application/json")
-            .body(Body::from(r#"{"dummy": "data"}"#))
+            .body(Body::from(r#"{
+                "id": "1234",
+                "rawId": "1234",
+                "type": "public-key",
+                "response": {
+                    "clientDataJSON": "1234",
+                    "attestationObject": "1234"
+                }
+            }"#))
             .unwrap();
 
         let response = app.oneshot(request).await.unwrap();
