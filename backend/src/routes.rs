@@ -537,7 +537,7 @@ mod tests {
     use testcontainers_modules::postgres::Postgres;
     use axum_extra::extract::cookie::Key;
 
-    async fn setup_test_app() -> Result<(Router, String), Box<dyn std::error::Error>> {
+    async fn setup_test_app() -> Result<(Router, testcontainers::ContainerAsync<Postgres>), Box<dyn std::error::Error>> {
         let pg_tag = std::env::var("TEST_POSTGRES_TAG").unwrap_or_else(|_| "18.4-trixie".to_string());
         let node = Postgres::default().with_tag(&pg_tag).start().await?;
         let port = node.get_host_port_ipv4(5432).await?;
@@ -557,12 +557,12 @@ mod tests {
             cookie_key: Key::generate(),
         };
 
-        Ok((Router::new().nest("/api/auth", auth_routes()).with_state(state), connection_string))
+        Ok((Router::new().nest("/api/auth", auth_routes()).with_state(state), node))
     }
 
     #[tokio::test]
     async fn test_register_start_endpoint() -> Result<(), Box<dyn std::error::Error>> {
-        let (app, _) = setup_test_app().await?;
+        let (app, _node) = setup_test_app().await?;
 
         let request = Request::builder()
             .method("POST")
@@ -571,7 +571,6 @@ mod tests {
             .body(Body::from(r#"{"username": "testuser"}"#))?;
 
         let response = app.oneshot(request).await?;
-        
         assert_eq!(response.status(), StatusCode::OK);
         assert!(response.headers().contains_key("set-cookie"));
         Ok(())
@@ -579,7 +578,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_register_finish_missing_cookie() -> Result<(), Box<dyn std::error::Error>> {
-        let (app, _) = setup_test_app().await?;
+        let (app, _node) = setup_test_app().await?;
 
         let request = Request::builder()
             .method("POST")
