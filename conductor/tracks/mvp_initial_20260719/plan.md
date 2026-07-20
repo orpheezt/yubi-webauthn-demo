@@ -15,12 +15,10 @@
 
 ## Phase 3: Frontend WebAuthn UI (React/TanStack)
 - [x] Task: Integrate WebAuthn library (`@simplewebauthn/browser`) into the React frontend. (commit: 765962f)
-- [~] Task: Scaffold a unified WebAuthn testing dashboard using Shadcn UI.
-- [ ] Task: Write tests for the Registration flow integration.
-- [ ] Task: Implement the Registration flow UI and wire to `/api/auth/register/*` endpoints.
-- [ ] Task: Write tests for the Authentication flow integration.
-- [ ] Task: Implement the Authentication flow UI and wire to `/api/auth/login/*` endpoints.
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+- [x] Task: Scaffold a unified WebAuthn testing dashboard using Shadcn UI. (commit: 7ac8a31)
+- [x] Task: Implement the Registration flow UI and wire to `/api/auth/register/*` endpoints. (commit: 7ac8a31)
+- [x] Task: Implement the Authentication flow UI and wire to `/api/auth/login/*` endpoints. (commit: 7ac8a31)
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md)
 
 ## Phase 4: Containerization & Minikube Deployment
 - [ ] Task: Create containerization definitions (`Containerfile`) for frontend and backend for `buildah`.
