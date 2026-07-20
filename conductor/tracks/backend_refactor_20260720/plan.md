@@ -1,13 +1,13 @@
 # Implementation Plan: Backend REST API Refactor
 
 ## Phase 1: Build & Setup Optimizations
-- [~] Task: Resolve `sqlx` query cache build failure
+- [x] 8063e76 Task: Resolve `sqlx` query cache build failure
   - [ ] Start database services if required for sqlx preparation
   - [ ] Run `cargo sqlx prepare` to update `sqlx-data.json`
   - [ ] Verify `cargo check` and `cargo build` pass without `SQLX_OFFLINE` errors
-- [ ] Task: Apply Compiler Optimizations
+- [x] 8063e76 Task: Apply Compiler Optimizations
   - [ ] Update `Cargo.toml` release profile to include `lto = true` and any other relevant optimizations (e.g., `codegen-units = 1`)
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) [checkpoint: cf5c733]
 
 ## Phase 2: Refactor Database Access Layer
 - [ ] Task: Identify and isolate common DB logic
