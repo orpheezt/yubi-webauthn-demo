@@ -1,5 +1,6 @@
 mod auth;
 mod db;
+mod routes;
 
 use axum::Router;
 use tracing::{error, info};
@@ -8,17 +9,21 @@ use auth::build_webauthn;
 use std::sync::Arc;
 
 #[derive(Clone)]
-struct AppState {
-    db: sqlx::PgPool,
-    webauthn: Arc<webauthn_rs::Webauthn>,
+pub struct AppState {
+    pub db: sqlx::PgPool,
+    pub webauthn: Arc<webauthn_rs::Webauthn>,
+    pub cookie_key: axum_extra::extract::cookie::Key,
 }
 
 fn root_router(state: AppState) -> Router {
-    Router::new().with_state(state)
+    Router::new()
+        .nest("/api/auth", routes::auth_routes())
+        .with_state(state)
 }
 
 #[tokio::main]
 async fn main() {
+    dotenvy::dotenv().ok();
     tracing_subscriber::fmt::init();
 
     // Use environment variable if present, otherwise use a default connection string
@@ -34,7 +39,10 @@ async fn main() {
     };
     info!("Successfully connected to DB.");
 
-    let webauthn = match build_webauthn() {
+    let rp_id = std::env::var("RP_ID").unwrap_or_else(|_| "localhost".to_string());
+    let rp_origin = std::env::var("RP_ORIGIN").unwrap_or_else(|_| "http://localhost:8080".to_string());
+
+    let webauthn = match build_webauthn(&rp_id, &rp_origin) {
         Ok(w) => Arc::new(w),
         Err(err) => {
             error!(?err, "Failed to initialize Webauthn");
@@ -46,6 +54,7 @@ async fn main() {
     let state = AppState {
         db: db_pool,
         webauthn,
+        cookie_key: axum_extra::extract::cookie::Key::generate(),
     };
 
     let app = root_router(state);
