@@ -79,7 +79,7 @@ jobs:
       - name: Lint frontend (Oxlint)
         run: |
           cd frontend
-          bun run lint
+          bun run lint --format=github
 
       - name: Typecheck frontend (TypeScript)
         run: |
