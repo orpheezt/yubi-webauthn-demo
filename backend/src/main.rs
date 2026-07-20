@@ -1,11 +1,20 @@
+mod auth;
 mod db;
 
 use axum::Router;
 use tracing::{error, info};
 use db::{get_db_pool, DbConfig};
+use auth::build_webauthn;
+use std::sync::Arc;
 
-fn root_router(_db_pool: sqlx::PgPool) -> Router {
-    Router::new()
+#[derive(Clone)]
+struct AppState {
+    db: sqlx::PgPool,
+    webauthn: Arc<webauthn_rs::Webauthn>,
+}
+
+fn root_router(state: AppState) -> Router {
+    Router::new().with_state(state)
 }
 
 #[tokio::main]
@@ -25,7 +34,21 @@ async fn main() {
     };
     info!("Successfully connected to DB.");
 
-    let app = root_router(db_pool);
+    let webauthn = match build_webauthn() {
+        Ok(w) => Arc::new(w),
+        Err(err) => {
+            error!(?err, "Failed to initialize Webauthn");
+            std::process::exit(1);
+        }
+    };
+    info!("Successfully initialized Webauthn.");
+
+    let state = AppState {
+        db: db_pool,
+        webauthn,
+    };
+
+    let app = root_router(state);
 
     let addr = "0.0.0.0:8080";
     let listener = match tokio::net::TcpListener::bind(addr).await {
