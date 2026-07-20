@@ -8,7 +8,7 @@ spec:
       restartPolicy: OnFailure
       containers:
       - name: migrate
-        image: localhost/yubi-migrations:latest
+        image: yubi-migrations:latest
         imagePullPolicy: Never
         env:
         - name: DATABASE_URL

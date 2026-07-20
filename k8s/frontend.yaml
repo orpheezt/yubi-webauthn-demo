@@ -13,7 +13,7 @@ spec:
     spec:
       containers:
       - name: frontend
-        image: localhost/yubi-frontend:latest
+        image: yubi-frontend:latest
         imagePullPolicy: Never
         ports:
         - containerPort: 3000

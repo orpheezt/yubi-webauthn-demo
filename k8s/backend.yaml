@@ -13,7 +13,7 @@ spec:
     spec:
       containers:
       - name: backend
-        image: localhost/yubi-backend:latest
+        image: yubi-backend:latest
         imagePullPolicy: Never
         ports:
         - containerPort: 8080
