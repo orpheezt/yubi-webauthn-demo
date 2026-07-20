@@ -8,8 +8,11 @@ spec:
       restartPolicy: OnFailure
       containers:
       - name: migrate
-        image: yubi-migrations:latest
+        image: localhost/yubi-migrations:latest
         imagePullPolicy: Never
         env:
         - name: DATABASE_URL
-          value: "postgres://yubiuser@yubi-pg-rw:5432/yubi"
+          valueFrom:
+            secretKeyRef:
+              name: yubi-pg-app
+              key: uri

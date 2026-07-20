@@ -1,0 +1,7 @@
+*.tar
+*.tar.zst
+target/
+node_modules/
+.output/
+.vinxi/
+.tanstack/

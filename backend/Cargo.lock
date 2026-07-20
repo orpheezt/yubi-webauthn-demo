@@ -3289,6 +3289,7 @@ version = "0.0.1"
 dependencies = [
  "axum",
  "axum-extra",
+ "base64 0.22.1",
  "chrono",
  "dotenvy",
  "serde",

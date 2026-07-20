@@ -5,24 +5,20 @@ echo "=> Building backend image..."
 buildah bud -t yubi-backend:latest -f backend/Containerfile backend/
 
 echo "=> Building migrations image..."
-buildah bud -t yubi-migrations:latest -f backend/migrations.Containerfile backend/
+buildah bud -t yubi-migrations:latest -f backend/migrations.Containerfile .
 
 echo "=> Building frontend image..."
 buildah bud -t yubi-frontend:latest -f frontend/Containerfile frontend/
 
 echo "=> Loading images to Minikube..."
-# Alternative 1 (Current): Direct push to Minikube's internal Docker daemon
-buildah push yubi-backend:latest docker-daemon:yubi-backend:latest
-buildah push yubi-migrations:latest docker-daemon:yubi-migrations:latest
-buildah push yubi-frontend:latest docker-daemon:yubi-frontend:latest
+rm -f backend.tar.zst migrations.tar.zst frontend.tar.zst
+buildah push --compression-format zstd yubi-backend:latest oci-archive:backend.tar.zst && minikube image load backend.tar.zst
+buildah push --compression-format zstd yubi-migrations:latest oci-archive:migrations.tar.zst && minikube image load migrations.tar.zst
+buildah push --compression-format zstd yubi-frontend:latest oci-archive:frontend.tar.zst && minikube image load frontend.tar.zst
 
-# Alternative 2 (Tar archive): Export and load via minikube
-# buildah push yubi-backend:latest docker-archive:backend.tar && minikube image load backend.tar
-# buildah push yubi-migrations:latest docker-archive:migrations.tar && minikube image load migrations.tar
-# buildah push yubi-frontend:latest docker-archive:frontend.tar && minikube image load frontend.tar
-
-# Alternative 3 (Local Registry): Push to the minikube registry addon
-# buildah push --tls-verify=false yubi-backend:latest localhost:5000/yubi-backend:latest
+echo "=> Installing CloudNativePG operator..."
+kubectl apply --server-side -f https://raw.githubusercontent.com/cloudnative-pg/cloudnative-pg/release-1.22/releases/cnpg-1.22.1.yaml
+kubectl wait --for=condition=Ready pod -l app.kubernetes.io/name=cloudnative-pg -n cnpg-system --timeout=120s || true
 
 echo "=> Creating 'yubi' namespace..."
 kubectl create namespace yubi --dry-run=client -o yaml | kubectl apply -f -

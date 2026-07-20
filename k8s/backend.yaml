@@ -1,3 +1,23 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: yubi-backend-config
+data:
+  RP_ID: "localhost"
+  RP_ORIGIN: "http://localhost:3000"
+  RUST_LOG: "info"
+  PORT: "8080"
+  MAX_DB_CONNECTIONS: "10"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: yubi-backend-secret
+type: Opaque
+stringData:
+  DATABASE_URL: "postgres://yubi_app:app_secret@yubi-pg-rw:5432/yubi"
+  COOKIE_SECRET: "super-secret-64-byte-key-for-session-cookies-and-webauthn-state-encryption!!"
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -13,15 +33,15 @@ spec:
     spec:
       containers:
       - name: backend
-        image: yubi-backend:latest
+        image: localhost/yubi-backend:latest
         imagePullPolicy: Never
         ports:
         - containerPort: 8080
-        env:
-        - name: DATABASE_URL
-          value: "postgres://yubiuser@yubi-pg-rw:5432/yubi"
-        - name: RUST_LOG
-          value: "info"
+        envFrom:
+        - configMapRef:
+            name: yubi-backend-config
+        - secretRef:
+            name: yubi-backend-secret
 ---
 apiVersion: v1
 kind: Service
