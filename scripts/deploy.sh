@@ -16,19 +16,22 @@ buildah push localhost/yubi-backend:latest docker-daemon:localhost/yubi-backend:
 buildah push localhost/yubi-migrations:latest docker-daemon:localhost/yubi-migrations:latest
 buildah push localhost/yubi-frontend:latest docker-daemon:localhost/yubi-frontend:latest
 
+echo "=> Creating 'yubi' namespace..."
+kubectl create namespace yubi --dry-run=client -o yaml | kubectl apply -f -
+
 echo "=> Applying Kubernetes manifests..."
-kubectl apply -f k8s/postgres.yaml
+kubectl apply -n yubi -f k8s/postgres.yaml
 # wait for postgres to be ready
 echo "=> Waiting for CloudNativePG cluster to be ready..."
-kubectl wait --for=condition=Ready cluster/yubi-pg --timeout=300s || true
+kubectl wait -n yubi --for=condition=Ready cluster/yubi-pg --timeout=300s || true
 
-kubectl apply -f k8s/migrations.yaml
+kubectl apply -n yubi -f k8s/migrations.yaml
 echo "=> Waiting for migrations to complete..."
-kubectl wait --for=condition=complete job/yubi-migrations --timeout=120s || true
+kubectl wait -n yubi --for=condition=complete job/yubi-migrations --timeout=120s || true
 
-kubectl apply -f k8s/backend.yaml
-kubectl apply -f k8s/frontend.yaml
-kubectl apply -f k8s/ingress.yaml
+kubectl apply -n yubi -f k8s/backend.yaml
+kubectl apply -n yubi -f k8s/frontend.yaml
+kubectl apply -n yubi -f k8s/ingress.yaml
 
 echo "=> Deployment complete!"
 echo "Ensure 'yubi.local' is mapped to your minikube IP in /etc/hosts"
