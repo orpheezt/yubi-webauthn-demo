@@ -4,7 +4,7 @@ ARG ALPINE_VERSION=3.21.0
 
 FROM rust:${RUST_VERSION}-alpine AS build
 WORKDIR /app
-RUN apk add --no-cache musl-dev libssl-dev pkgconfig openssl-dev clang lld git
+RUN apk add --no-cache musl-dev libssl-dev pkgconfig openssl-dev clang lld
 
 RUN cargo install sqlx-cli --no-default-features --features rustls,postgres
 
