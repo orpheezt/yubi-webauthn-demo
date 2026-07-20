@@ -14,8 +14,8 @@
 - [x] Task: Phase Verification & Checkpoint (Refer to workflow.md)
 
 ## Phase 3: Frontend WebAuthn UI (React/TanStack)
-- [ ] Task: Integrate WebAuthn library (`@simplewebauthn/browser`) into the React frontend.
-- [ ] Task: Scaffold a unified WebAuthn testing dashboard using Shadcn UI.
+- [x] Task: Integrate WebAuthn library (`@simplewebauthn/browser`) into the React frontend. (commit: 765962f)
+- [~] Task: Scaffold a unified WebAuthn testing dashboard using Shadcn UI.
 - [ ] Task: Write tests for the Registration flow integration.
 - [ ] Task: Implement the Registration flow UI and wire to `/api/auth/register/*` endpoints.
 - [ ] Task: Write tests for the Authentication flow integration.
