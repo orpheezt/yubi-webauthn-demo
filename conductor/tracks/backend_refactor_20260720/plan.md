@@ -19,10 +19,10 @@
 - [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) [checkpoint: 4a38aa6]
 
 ## Phase 3: Refactor Axum Routes
-- [ ] Task: Update Route Handlers
-  - [ ] Modify existing Axum route handlers to utilize the newly extracted shared database components
-  - [ ] Eliminate duplicated request validation or error handling logic by utilizing Axum extractors or middleware if applicable
-  - [ ] Clean up redundant comments in route handlers
+- [x] 86d76a3 Task: Update Route Handlers
+  - [x] Modify existing Axum route handlers to utilize the newly extracted shared database components
+  - [x] Eliminate duplicated request validation or error handling logic by utilizing Axum extractors or middleware if applicable
+  - [x] Clean up redundant comments in route handlers
 - [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
 
 ## Phase 4: Final Cleanup and Validation
