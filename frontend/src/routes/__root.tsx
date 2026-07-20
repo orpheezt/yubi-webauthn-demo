@@ -28,6 +28,7 @@ export const Route = createRootRoute({
 })
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { ThemeProvider } from '#/components/theme-provider'
 
 const queryClient = new QueryClient()
 
@@ -38,10 +39,12 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <HeadContent />
       </head>
       <body>
-        <QueryClientProvider client={queryClient}>
-          {children}
-        </QueryClientProvider>
-        <Toaster />
+        <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
+          <QueryClientProvider client={queryClient}>
+            {children}
+          </QueryClientProvider>
+          <Toaster />
+        </ThemeProvider>
         <Scripts />
       </body>
     </html>
