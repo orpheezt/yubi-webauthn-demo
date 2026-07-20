@@ -1,0 +1,26 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: yubi-ingress
+  annotations:
+    angie.software/rewrite-target: /
+spec:
+  ingressClassName: angie
+  rules:
+  - host: yubi.local
+    http:
+      paths:
+      - path: /api
+        pathType: Prefix
+        backend:
+          service:
+            name: yubi-backend
+            port:
+              number: 8080
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: yubi-frontend
+            port:
+              number: 3000

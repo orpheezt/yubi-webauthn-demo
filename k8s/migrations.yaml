@@ -1,0 +1,15 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: yubi-migrations
+spec:
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+      - name: migrate
+        image: localhost/yubi-migrations:latest
+        imagePullPolicy: Never
+        env:
+        - name: DATABASE_URL
+          value: "postgres://yubiuser@yubi-pg-rw:5432/yubi"
