@@ -24,3 +24,7 @@ webauthn-rs = { version = "0.5.5", features = ["danger-allow-state-serialisation
 testcontainers = "0.27.3"
 testcontainers-modules = { version = "0.15.0", features = ["postgres"] }
 tower = { version = "0.5.3", features = ["util"] }
+
+[profile.release]
+lto = true
+codegen-units = 1
