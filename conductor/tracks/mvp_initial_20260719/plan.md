@@ -9,8 +9,8 @@
 - [x] Task: Integrate `webauthn-rs` into the backend. (commit: 8df223b)
 - [x] Task: Write tests for Registration API endpoints (challenge and register). (commit: 91a7355)
 - [x] Task: Implement Registration API endpoints. (commit: d9b4998)
-- [ ] Task: Write tests for Authentication API endpoints (challenge and authenticate).
-- [ ] Task: Implement Authentication API endpoints.
+- [x] Task: Write tests for Authentication API endpoints (challenge and authenticate). (commit: ef4b233)
+- [~] Task: Implement Authentication API endpoints.
 - [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
 
 ## Phase 3: Frontend Testing Dashboard
