@@ -1,10 +1,18 @@
-name: CI Pipeline
+name: Backend CI
 
 on:
   push:
     branches: [ master ]
+    paths:
+      - 'backend/**'
+      - 'migrations/**'
+      - '.github/workflows/backend.yml'
   pull_request:
     branches: [ master ]
+    paths:
+      - 'backend/**'
+      - 'migrations/**'
+      - '.github/workflows/backend.yml'
 
 jobs:
   backend-test:
@@ -60,39 +68,8 @@ jobs:
           cd backend
           DATABASE_URL="postgres://postgres:secret@localhost:5432/postgres" cargo test
 
-  frontend-build:
-    name: Frontend Typecheck & Build
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7.0.1
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2.2.0
-        with:
-          bun-version: "1.3.14"
-
-      - name: Install dependencies
-        run: |
-          cd frontend
-          bun install --frozen-lockfile
-
-      - name: Lint frontend (Oxlint)
-        run: |
-          cd frontend
-          bun run lint --format=github
-
-      - name: Typecheck frontend (TypeScript)
-        run: |
-          cd frontend
-          bun run typecheck
-
-      - name: Build frontend
-        run: |
-          cd frontend
-          bun run build
-
   container-build:
-    name: Container Images Build Check
+    name: Backend Container Image Build Check
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -123,6 +100,3 @@ jobs:
 
       - name: Build Backend Image
         run: sudo buildah bud --network=host --build-arg DATABASE_URL="postgres://postgres:secret@127.0.0.1:5432/postgres" -t yubi-backend:latest -f backend/Containerfile backend/
-
-      - name: Build Frontend Image
-        run: sudo buildah bud -t yubi-frontend:latest -f frontend/Containerfile frontend/
