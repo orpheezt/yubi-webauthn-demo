@@ -1,13 +1,13 @@
 mod auth;
 mod db;
-mod routes;
 pub mod repository;
+mod routes;
 
-use axum::Router;
-use tracing::{error, info};
-use db::{get_db_pool, DbConfig};
 use auth::build_webauthn;
+use axum::Router;
+use db::{DbConfig, get_db_pool};
 use std::sync::Arc;
+use tracing::{error, info};
 
 #[derive(Clone)]
 pub struct AppState {
@@ -26,7 +26,9 @@ async fn healthz() -> impl axum::response::IntoResponse {
     axum::http::StatusCode::OK
 }
 
-async fn readyz(axum::extract::State(state): axum::extract::State<AppState>) -> Result<impl axum::response::IntoResponse, (axum::http::StatusCode, String)> {
+async fn readyz(
+    axum::extract::State(state): axum::extract::State<AppState>,
+) -> Result<impl axum::response::IntoResponse, (axum::http::StatusCode, String)> {
     sqlx::query("SELECT 1")
         .execute(&state.db)
         .await
@@ -50,23 +52,32 @@ async fn main() {
     // Configurable database connection parameters
     let db_url = std::env::var("DATABASE_URL")
         .unwrap_or_else(|_| "postgres://postgres:postgres@localhost:5432/postgres".to_string());
-    
+
     let max_connections = std::env::var("MAX_DB_CONNECTIONS")
         .ok()
         .and_then(|s| s.parse::<u32>().ok())
         .unwrap_or(10);
 
-    let db_pool = match get_db_pool(DbConfig { url: db_url, max_connections }).await {
+    let db_pool = match get_db_pool(DbConfig {
+        url: db_url,
+        max_connections,
+    })
+    .await
+    {
         Ok(pool) => pool,
         Err(err) => {
             error!(%err, "Failed to connect to the database");
             std::process::exit(1);
         }
     };
-    info!("Successfully connected to DB with max_connections={}.", max_connections);
+    info!(
+        "Successfully connected to DB with max_connections={}.",
+        max_connections
+    );
 
     let rp_id = std::env::var("RP_ID").unwrap_or_else(|_| "localhost".to_string());
-    let rp_origin = std::env::var("RP_ORIGIN").unwrap_or_else(|_| "http://localhost:3000".to_string());
+    let rp_origin =
+        std::env::var("RP_ORIGIN").unwrap_or_else(|_| "http://localhost:3000".to_string());
 
     let webauthn = match build_webauthn(&rp_id, &rp_origin) {
         Ok(w) => Arc::new(w),
@@ -75,7 +86,10 @@ async fn main() {
             std::process::exit(1);
         }
     };
-    info!("Successfully initialized Webauthn for RP_ID='{}', RP_ORIGIN='{}'.", rp_id, rp_origin);
+    info!(
+        "Successfully initialized Webauthn for RP_ID='{}', RP_ORIGIN='{}'.",
+        rp_id, rp_origin
+    );
 
     // Persistent Cookie Encryption Key if COOKIE_SECRET is provided, otherwise generate key
     let cookie_key = match std::env::var("COOKIE_SECRET") {

@@ -1,4 +1,4 @@
-use sqlx::{postgres::PgPoolOptions, PgPool};
+use sqlx::{PgPool, postgres::PgPoolOptions};
 
 pub struct DbConfig {
     pub url: String,
@@ -15,12 +15,13 @@ pub async fn get_db_pool(config: DbConfig) -> Result<PgPool, sqlx::Error> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use testcontainers::{runners::AsyncRunner, ImageExt};
+    use testcontainers::{ImageExt, runners::AsyncRunner};
     use testcontainers_modules::postgres::Postgres;
 
     #[tokio::test]
     async fn test_db_connection() -> Result<(), String> {
-        let pg_tag = std::env::var("TEST_POSTGRES_TAG").unwrap_or_else(|_| "18.4-trixie".to_string());
+        let pg_tag =
+            std::env::var("TEST_POSTGRES_TAG").unwrap_or_else(|_| "18.4-trixie".to_string());
         let node = match Postgres::default().with_tag(&pg_tag).start().await {
             Ok(n) => n,
             Err(err) => return Err(format!("Failed to start test container: {}", err)),
@@ -33,7 +34,12 @@ mod tests {
 
         let connection_string = format!("postgres://postgres:postgres@127.0.0.1:{}/postgres", port);
 
-        let pool = match get_db_pool(DbConfig { url: connection_string, max_connections: 5 }).await {
+        let pool = match get_db_pool(DbConfig {
+            url: connection_string,
+            max_connections: 5,
+        })
+        .await
+        {
             Ok(p) => p,
             Err(err) => return Err(format!("Failed to connect to db: {}", err)),
         };
