@@ -1,6 +1,7 @@
 mod auth;
 mod db;
 mod routes;
+pub mod repository;
 
 use axum::Router;
 use tracing::{error, info};

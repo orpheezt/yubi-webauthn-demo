@@ -9,6 +9,7 @@ use axum_extra::extract::cookie::{Cookie, SameSite, PrivateCookieJar};
 use serde::{Deserialize, Serialize};
 use webauthn_rs::prelude::*;
 use crate::AppState;
+use crate::repository;
 
 pub fn auth_routes() -> Router<AppState> {
     Router::new()
@@ -41,35 +42,22 @@ async fn register_start(
         _ => payload.username.clone(),
     };
 
-    let (user_unique_id, exclude_credentials) = match sqlx::query!(
-        "SELECT id FROM users WHERE username = $1",
-        payload.username
-    )
-    .fetch_optional(&state.db)
+    let (user_unique_id, exclude_credentials) = match repository::get_user_id_by_username(&state.db, &payload.username)
     .await
     .map_err(|e| {
         tracing::error!("Failed to query user: {:?}", e);
         (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
     })? {
-        Some(user) => {
-            let creds = sqlx::query!("SELECT passkey_json FROM credentials WHERE user_id = $1", user.id)
-                .fetch_all(&state.db)
+        Some(user_id) => {
+            let pks = repository::get_user_passkeys(&state.db, user_id)
                 .await
                 .map_err(|e| {
                     tracing::error!("Failed to fetch user credentials: {:?}", e);
                     (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
                 })?;
 
-            let mut descriptor_vec = Vec::new();
-            for c in creds {
-                let pk: Passkey = serde_json::from_value(c.passkey_json).map_err(|e| {
-                    tracing::error!("Failed to deserialize passkey: {:?}", e);
-                    (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
-                })?;
-                descriptor_vec.push(pk.cred_id().clone());
-            }
-
-            (user.id, Some(descriptor_vec))
+            let descriptor_vec = pks.into_iter().map(|pk| pk.cred_id().clone()).collect();
+            (user_id, Some(descriptor_vec))
         }
         None => (Uuid::new_v4(), Some(vec![])),
     };
@@ -164,24 +152,14 @@ async fn register_finish(
     let user_uuid = Uuid::new_v4();
     
     // Insert user if not exists (handling conflict)
-    if let Err(e) = sqlx::query!(
-        "INSERT INTO users (id, username) VALUES ($1, $2) ON CONFLICT (username) DO NOTHING",
-        user_uuid,
-        cookie_state.username
-    )
-    .execute(&mut *tx)
-    .await {
+    if let Err(e) = repository::insert_user_if_not_exists(&mut tx, user_uuid, &cookie_state.username).await {
         tracing::error!("Failed to insert user into DB: {:?}", e);
         return Err((StatusCode::INTERNAL_SERVER_ERROR, e.to_string()));
     }
 
-    let user_record = match sqlx::query!(
-        "SELECT id FROM users WHERE username = $1",
-        cookie_state.username
-    )
-    .fetch_one(&mut *tx)
-    .await {
-        Ok(rec) => rec,
+    let user_id = match repository::get_user_id_by_username_tx(&mut tx, &cookie_state.username).await {
+        Ok(Some(id)) => id,
+        Ok(None) => return Err((StatusCode::INTERNAL_SERVER_ERROR, "User not found after insert".to_string())),
         Err(e) => {
             tracing::error!("Failed to fetch user record from DB: {:?}", e);
             return Err((StatusCode::INTERNAL_SERVER_ERROR, e.to_string()));
@@ -200,15 +178,7 @@ async fn register_finish(
     let cred_id_b64 = base64::Engine::encode(&base64::engine::general_purpose::URL_SAFE_NO_PAD, passkey.cred_id());
     let passkey_name = payload.name.unwrap_or_else(|| "Security Key".to_string());
 
-    if let Err(e) = sqlx::query!(
-        "INSERT INTO credentials (cred_id, user_id, passkey_json, name) VALUES ($1, $2, $3, $4)",
-        cred_id_b64,
-        user_record.id,
-        passkey_json,
-        passkey_name
-    )
-    .execute(&mut *tx)
-    .await {
+    if let Err(e) = repository::insert_credential(&mut tx, &cred_id_b64, user_id, passkey_json, &passkey_name).await {
         tracing::error!("Failed to insert credential into DB: {:?}", e);
         return Err((StatusCode::INTERNAL_SERVER_ERROR, e.to_string()));
     }
@@ -219,7 +189,7 @@ async fn register_finish(
     }
 
     tracing::info!("Successfully registered passkey for user: {}", cookie_state.username);
-    let session_cookie = create_session_cookie(user_record.id.to_string());
+    let session_cookie = create_session_cookie(user_id.to_string());
     let updated_jar = jar.remove(Cookie::from(REG_COOKIE_NAME)).add(session_cookie);
     Ok((updated_jar, StatusCode::OK))
 }
@@ -400,52 +370,27 @@ async fn login_start(
     tracing::info!("login_start called for username: '{}'", payload.username);
     
     let passkeys = if payload.username.trim().is_empty() {
-        let creds = sqlx::query!("SELECT passkey_json FROM credentials")
-            .fetch_all(&state.db)
+        repository::get_all_passkeys(&state.db)
             .await
             .map_err(|e| {
                 tracing::error!("Failed to fetch all credentials: {:?}", e);
                 (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
-            })?;
-        
-        let mut pks = Vec::new();
-        for c in creds {
-            let pk: Passkey = serde_json::from_value(c.passkey_json)
-                .map_err(|e| {
-                    tracing::error!("Failed to deserialize passkey json: {:?}", e);
-                    (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
-                })?;
-            pks.push(pk);
-        }
-        pks
+            })?
     } else {
-        let user_record = sqlx::query!("SELECT id FROM users WHERE username = $1", payload.username)
-            .fetch_optional(&state.db)
+        let user_id = repository::get_user_id_by_username(&state.db, &payload.username)
             .await
             .map_err(|e| {
                 tracing::error!("Failed to query user: {:?}", e);
                 (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
             })?;
 
-        if let Some(user) = user_record {
-            let creds = sqlx::query!("SELECT passkey_json FROM credentials WHERE user_id = $1", user.id)
-                .fetch_all(&state.db)
+        if let Some(uid) = user_id {
+            repository::get_user_passkeys(&state.db, uid)
                 .await
                 .map_err(|e| {
                     tracing::error!("Failed to fetch user credentials: {:?}", e);
                     (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
-                })?;
-            
-            let mut pks = Vec::new();
-            for c in creds {
-                let pk: Passkey = serde_json::from_value(c.passkey_json)
-                    .map_err(|e| {
-                        tracing::error!("Failed to deserialize passkey json: {:?}", e);
-                        (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
-                    })?;
-                pks.push(pk);
-            }
-            pks
+                })?
         } else {
             tracing::error!("User not found: {}", payload.username);
             return Err((StatusCode::NOT_FOUND, "User not found".to_string()));
@@ -508,16 +453,16 @@ async fn login_finish(
         })?;
 
     let cred_id_b64 = base64::Engine::encode(&base64::engine::general_purpose::URL_SAFE_NO_PAD, auth_result.cred_id());
-    let cred_record = sqlx::query!("SELECT user_id FROM credentials WHERE cred_id = $1", cred_id_b64)
-        .fetch_one(&state.db)
+    let user_id = repository::get_user_id_by_cred_id(&state.db, &cred_id_b64)
         .await
         .map_err(|e| {
             tracing::error!("Failed to find user for credential: {:?}", e);
             (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
-        })?;
+        })?
+        .ok_or_else(|| (StatusCode::NOT_FOUND, "User for credential not found".to_string()))?;
         
     tracing::info!("login_finish successful!");
-    let session_cookie = create_session_cookie(cred_record.user_id.to_string());
+    let session_cookie = create_session_cookie(user_id.to_string());
     let updated_jar = jar.remove(Cookie::from(AUTH_COOKIE_NAME)).add(session_cookie);
     
     Ok((updated_jar, StatusCode::OK))
