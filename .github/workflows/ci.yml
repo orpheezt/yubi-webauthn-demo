@@ -76,6 +76,16 @@ jobs:
           cd frontend
           bun install --frozen-lockfile
 
+      - name: Lint frontend (Oxlint)
+        run: |
+          cd frontend
+          bun run lint
+
+      - name: Typecheck frontend (TypeScript)
+        run: |
+          cd frontend
+          bun run typecheck
+
       - name: Build frontend
         run: |
           cd frontend
