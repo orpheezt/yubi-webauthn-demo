@@ -1,7 +1,7 @@
 # Implementation Plan: Backend REST API Refactor
 
 ## Phase 1: Build & Setup Optimizations
-- [ ] Task: Resolve `sqlx` query cache build failure
+- [~] Task: Resolve `sqlx` query cache build failure
   - [ ] Start database services if required for sqlx preparation
   - [ ] Run `cargo sqlx prepare` to update `sqlx-data.json`
   - [ ] Verify `cargo check` and `cargo build` pass without `SQLX_OFFLINE` errors
