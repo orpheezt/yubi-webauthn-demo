@@ -1,0 +1,19 @@
+apiVersion: "cilium.io/v2alpha1"
+kind: CiliumLoadBalancerIPPool
+metadata:
+  name: yubi-lb-pool
+spec:
+  blocks:
+    - cidr: "192.168.39.240/28"
+---
+apiVersion: "cilium.io/v2alpha1"
+kind: CiliumL2AnnouncementPolicy
+metadata:
+  name: yubi-l2-policy
+spec:
+  loadBalancerIPs: true
+  interfaces:
+    - "eth0"
+  nodeSelector:
+    matchLabels:
+      kubernetes.io/os: linux
