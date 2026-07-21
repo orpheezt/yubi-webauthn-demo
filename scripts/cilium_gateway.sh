@@ -16,10 +16,9 @@ helm repo update cilium
 K8S_HOST=$(kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}' | sed 's|https://||' | cut -d: -f1)
 K8S_PORT=$(kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}' | sed 's|https://||' | cut -d: -f2)
 
-kubectl create namespace cilium-secrets --dry-run=client -o yaml | kubectl apply -f -
-
 helm upgrade --install cilium cilium/cilium \
   --namespace kube-system \
+  --take-ownership \
   -f k8s/cilium-values.yaml \
   --set k8sServiceHost="$K8S_HOST" \
   --set k8sServicePort="$K8S_PORT"
@@ -47,6 +46,7 @@ echo "Waiting for cert-manager to issue yubi-tls-secret..."
 kubectl wait -n yubi --for=condition=Ready certificate/yubi-local-cert --timeout=120s || true
 
 # Sync secret to cilium-secrets namespace for Envoy
+kubectl create namespace cilium-secrets --dry-run=client -o yaml | kubectl apply -f - 2>/dev/null || true
 kubectl get secret yubi-tls-secret -n yubi -o yaml 2>/dev/null | \
   sed 's/name: yubi-tls-secret/name: yubi-yubi-tls-secret/' | \
   sed 's/namespace: yubi/namespace: cilium-secrets/' | \
