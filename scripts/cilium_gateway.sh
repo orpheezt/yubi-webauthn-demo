@@ -9,7 +9,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$PROJECT_ROOT"
 
-echo "[1/5] Deploying Cilium via Helm using k8s/cilium-values.yaml..."
+echo "[1/4] Deploying Cilium via Helm using k8s/cilium-values.yaml (with --wait)..."
 helm repo add cilium https://helm.cilium.io/ 2>/dev/null || true
 helm repo update cilium
 
@@ -18,6 +18,7 @@ kubectl delete daemonset cilium cilium-envoy -n kube-system --ignore-not-found 2
 kubectl delete deployment cilium-operator -n kube-system --ignore-not-found 2>/dev/null || true
 kubectl delete configmap cilium-config cilium-envoy-config -n kube-system --ignore-not-found 2>/dev/null || true
 kubectl delete clusterrole cilium cilium-operator --ignore-not-found 2>/dev/null || true
+
 # Adopt cilium-secrets namespace for Helm ownership (prevents kubernetes finalizer hangs)
 kubectl create namespace cilium-secrets --dry-run=client -o yaml | kubectl apply -f -
 kubectl label namespace cilium-secrets app.kubernetes.io/managed-by=Helm --overwrite 2>/dev/null || true
@@ -32,21 +33,13 @@ helm upgrade --install cilium cilium/cilium \
   --take-ownership \
   -f k8s/cilium-values.yaml \
   --set k8sServiceHost="$K8S_HOST" \
-  --set k8sServicePort="$K8S_PORT"
+  --set k8sServicePort="$K8S_PORT" \
+  --wait
 
-echo "[2/5] Applying Cilium LB-IPAM pool and L2 announcement policy..."
-echo "Waiting for Cilium CRDs to be established..."
-kubectl wait --for=condition=Established crd/ciliumloadbalancerippools.cilium.io crd/ciliuml2announcementpolicies.cilium.io --timeout=400s 2>/dev/null || sleep 5
+echo "[2/4] Applying Cilium LB-IPAM pool and L2 announcement policy..."
+kubectl apply -f k8s/cilium-lb.yaml
 
-for i in {1..10}; do
-  if kubectl apply -f k8s/cilium-lb.yaml; then
-    break
-  fi
-  echo "Retrying Cilium LB-IPAM pool apply ($i/10)..."
-  sleep 3
-done
-
-echo "[3/5] Installing cert-manager v1.21.0 via Helm..."
+echo "[3/4] Installing cert-manager v1.21.0 via Helm (with --wait)..."
 helm repo add jetstack https://charts.jetstack.io 2>/dev/null || true
 helm repo update jetstack
 helm upgrade --install cert-manager jetstack/cert-manager \
@@ -56,17 +49,12 @@ helm upgrade --install cert-manager jetstack/cert-manager \
   --set crds.enabled=true \
   --wait
 
-echo "Waiting for cert-manager deployments..."
-kubectl rollout status deployment/cert-manager -n cert-manager --timeout=1200s
-kubectl rollout status deployment/cert-manager-cainjector -n cert-manager --timeout=400s 2>/dev/null || true
-kubectl rollout status deployment/cert-manager-webhook -n cert-manager --timeout=400s
-
-echo "[4/5] Applying cert-manager ClusterIssuer & Certificate..."
+echo "[4/4] Applying cert-manager ClusterIssuer & Certificate..."
 kubectl create namespace yubi --dry-run=client -o yaml | kubectl apply -f -
 kubectl apply -f k8s/cert-manager-issuer.yaml
 
 echo "Waiting for cert-manager to issue yubi-tls-secret..."
-kubectl wait -n yubi --for=condition=Ready certificate/yubi-local-cert --timeout=400s || true
+kubectl wait -n yubi --for=condition=Ready certificate/yubi-local-cert --timeout=300s || true
 
 # Sync secret to cilium-secrets namespace for Envoy
 kubectl create namespace cilium-secrets --dry-run=client -o yaml | kubectl apply -f - 2>/dev/null || true
@@ -74,10 +62,6 @@ kubectl get secret yubi-tls-secret -n yubi -o yaml 2>/dev/null | \
   sed 's/name: yubi-tls-secret/name: yubi-yubi-tls-secret/' | \
   sed 's/namespace: yubi/namespace: cilium-secrets/' | \
   kubectl apply -f - 2>/dev/null || true
-
-echo "[5/5] Waiting for Cilium DaemonSet & Operator rollout..."
-kubectl rollout status daemonset/cilium -n kube-system --timeout=400s
-kubectl rollout status deployment/cilium-operator -n kube-system --timeout=400s
 
 echo "======================================================"
 echo "    Cilium Gateway & cert-manager Setup Complete!     "
