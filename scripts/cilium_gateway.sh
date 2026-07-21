@@ -36,7 +36,7 @@ helm upgrade --install cilium cilium/cilium \
 
 echo "[2/5] Applying Cilium LB-IPAM pool and L2 announcement policy..."
 echo "Waiting for Cilium CRDs to be established..."
-kubectl wait --for=condition=Established crd/ciliumloadbalancerippools.cilium.io crd/ciliuml2announcementpolicies.cilium.io --timeout=120s 2>/dev/null || sleep 5
+kubectl wait --for=condition=Established crd/ciliumloadbalancerippools.cilium.io crd/ciliuml2announcementpolicies.cilium.io --timeout=400s 2>/dev/null || sleep 5
 
 for i in {1..10}; do
   if kubectl apply -f k8s/cilium-lb.yaml; then
@@ -53,19 +53,20 @@ helm upgrade --install cert-manager jetstack/cert-manager \
   --version v1.21.0 \
   --namespace cert-manager \
   --create-namespace \
-  --set crds.enabled=true
+  --set crds.enabled=true \
+  --wait
 
 echo "Waiting for cert-manager deployments..."
-kubectl rollout status deployment/cert-manager -n cert-manager --timeout=300s
-kubectl rollout status deployment/cert-manager-cainjector -n cert-manager --timeout=300s 2>/dev/null || true
-kubectl rollout status deployment/cert-manager-webhook -n cert-manager --timeout=300s
+kubectl rollout status deployment/cert-manager -n cert-manager --timeout=1200s
+kubectl rollout status deployment/cert-manager-cainjector -n cert-manager --timeout=400s 2>/dev/null || true
+kubectl rollout status deployment/cert-manager-webhook -n cert-manager --timeout=400s
 
 echo "[4/5] Applying cert-manager ClusterIssuer & Certificate..."
 kubectl create namespace yubi --dry-run=client -o yaml | kubectl apply -f -
 kubectl apply -f k8s/cert-manager-issuer.yaml
 
 echo "Waiting for cert-manager to issue yubi-tls-secret..."
-kubectl wait -n yubi --for=condition=Ready certificate/yubi-local-cert --timeout=300s || true
+kubectl wait -n yubi --for=condition=Ready certificate/yubi-local-cert --timeout=400s || true
 
 # Sync secret to cilium-secrets namespace for Envoy
 kubectl create namespace cilium-secrets --dry-run=client -o yaml | kubectl apply -f - 2>/dev/null || true
@@ -75,8 +76,8 @@ kubectl get secret yubi-tls-secret -n yubi -o yaml 2>/dev/null | \
   kubectl apply -f - 2>/dev/null || true
 
 echo "[5/5] Waiting for Cilium DaemonSet & Operator rollout..."
-kubectl rollout status daemonset/cilium -n kube-system --timeout=300s
-kubectl rollout status deployment/cilium-operator -n kube-system --timeout=300s
+kubectl rollout status daemonset/cilium -n kube-system --timeout=400s
+kubectl rollout status deployment/cilium-operator -n kube-system --timeout=400s
 
 echo "======================================================"
 echo "    Cilium Gateway & cert-manager Setup Complete!     "

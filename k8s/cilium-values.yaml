@@ -6,3 +6,10 @@ kubeProxyReplacement: true
 
 l2announcements:
   enabled: true
+
+hubble:
+  enabled: true
+  relay:
+    enabled: true
+  ui:
+    enabled: true
