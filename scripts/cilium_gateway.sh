@@ -34,7 +34,16 @@ helm upgrade --install cilium cilium/cilium \
   --set k8sServicePort="$K8S_PORT"
 
 echo "[2/5] Applying Cilium LB-IPAM pool and L2 announcement policy..."
-kubectl apply -f k8s/cilium-lb.yaml
+echo "Waiting for Cilium CRDs to be established..."
+kubectl wait --for=condition=Established crd/ciliumloadbalancerippools.cilium.io crd/ciliuml2announcementpolicies.cilium.io --timeout=120s 2>/dev/null || sleep 5
+
+for i in {1..10}; do
+  if kubectl apply -f k8s/cilium-lb.yaml; then
+    break
+  fi
+  echo "Retrying Cilium LB-IPAM pool apply ($i/10)..."
+  sleep 3
+done
 
 echo "[3/5] Installing cert-manager via Helm..."
 helm repo add jetstack https://charts.jetstack.io 2>/dev/null || true
