@@ -13,4 +13,7 @@
 - [x] **Track: Cilium Gateway API Integration**
   *Link: [./tracks/cilium_gateway_20260720/index.md](./tracks/cilium_gateway_20260720/index.md)*
 
+---
+- [ ] **Track: Fix WebAuthn RP Config for K8s Deployment**
+  *Link: [./tracks/webauthn_rp_config_20260720/index.md](./tracks/webauthn_rp_config_20260720/index.md)*
 
