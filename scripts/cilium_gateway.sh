@@ -27,6 +27,7 @@ K8S_HOST=$(kubectl config view --minify -o jsonpath='{.clusters[0].cluster.serve
 K8S_PORT=$(kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}' | sed 's|https://||' | cut -d: -f2)
 
 helm upgrade --install cilium cilium/cilium \
+  --version 1.19.6 \
   --namespace kube-system \
   --take-ownership \
   -f k8s/cilium-values.yaml \
@@ -45,24 +46,26 @@ for i in {1..10}; do
   sleep 3
 done
 
-echo "[3/5] Installing cert-manager via Helm..."
+echo "[3/5] Installing cert-manager v1.21.0 via Helm..."
 helm repo add jetstack https://charts.jetstack.io 2>/dev/null || true
 helm repo update jetstack
 helm upgrade --install cert-manager jetstack/cert-manager \
+  --version v1.21.0 \
   --namespace cert-manager \
   --create-namespace \
   --set crds.enabled=true
 
 echo "Waiting for cert-manager deployments..."
-kubectl rollout status deployment/cert-manager -n cert-manager --timeout=120s
-kubectl rollout status deployment/cert-manager-webhook -n cert-manager --timeout=120s
+kubectl rollout status deployment/cert-manager -n cert-manager --timeout=300s
+kubectl rollout status deployment/cert-manager-cainjector -n cert-manager --timeout=300s 2>/dev/null || true
+kubectl rollout status deployment/cert-manager-webhook -n cert-manager --timeout=300s
 
 echo "[4/5] Applying cert-manager ClusterIssuer & Certificate..."
 kubectl create namespace yubi --dry-run=client -o yaml | kubectl apply -f -
 kubectl apply -f k8s/cert-manager-issuer.yaml
 
 echo "Waiting for cert-manager to issue yubi-tls-secret..."
-kubectl wait -n yubi --for=condition=Ready certificate/yubi-local-cert --timeout=120s || true
+kubectl wait -n yubi --for=condition=Ready certificate/yubi-local-cert --timeout=300s || true
 
 # Sync secret to cilium-secrets namespace for Envoy
 kubectl create namespace cilium-secrets --dry-run=client -o yaml | kubectl apply -f - 2>/dev/null || true
@@ -73,7 +76,7 @@ kubectl get secret yubi-tls-secret -n yubi -o yaml 2>/dev/null | \
 
 echo "[5/5] Waiting for Cilium DaemonSet & Operator rollout..."
 kubectl rollout status daemonset/cilium -n kube-system --timeout=300s
-kubectl rollout status deployment/cilium-operator -n kube-system --timeout=180s
+kubectl rollout status deployment/cilium-operator -n kube-system --timeout=300s
 
 echo "======================================================"
 echo "    Cilium Gateway & cert-manager Setup Complete!     "

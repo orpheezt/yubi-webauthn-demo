@@ -83,7 +83,10 @@ $CONTAINER_CMD image save -o frontend.tar yubi-frontend:latest && minikube image
 echo "[4/6] Installing CloudNativePG Operator via Helm..."
 helm repo add cnpg https://cloudnative-pg.github.io/charts || true
 helm repo update
-helm upgrade --install cnpg cnpg/cloudnative-pg --namespace cnpg-system --create-namespace
+helm upgrade --install cnpg cnpg/cloudnative-pg \
+  --version 0.29.0 \
+  --namespace cnpg-system \
+  --create-namespace
 echo "Waiting for CloudNativePG operator deployment..."
 kubectl wait --for=condition=Ready pod -l app.kubernetes.io/name=cloudnative-pg -n cnpg-system --timeout=300s || true
 
