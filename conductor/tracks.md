@@ -7,6 +7,6 @@
 - [x] **Track: Backend REST API Refactor**
   *Link: [./tracks/backend_refactor_20260720/index.md](./tracks/backend_refactor_20260720/index.md)*
 
-- [~] **Track: K8s Infrastructure & Cluster Lifecycle Automation**
+- [x] **Track: K8s Infrastructure & Cluster Lifecycle Automation**
   *Link: [./tracks/k8s_lifecycle_20260720/index.md](./tracks/k8s_lifecycle_20260720/index.md)*
 
