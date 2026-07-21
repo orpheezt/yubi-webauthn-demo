@@ -86,7 +86,9 @@ helm repo update
 helm upgrade --install cnpg cnpg/cloudnative-pg \
   --version 0.29.0 \
   --namespace cnpg-system \
-  --create-namespace
+  --create-namespace \
+  --wait \
+  --timeout 2m
 echo "Waiting for CloudNativePG operator deployment..."
 kubectl wait --for=condition=Ready pod -l app.kubernetes.io/name=cloudnative-pg -n cnpg-system --timeout=300s || true
 

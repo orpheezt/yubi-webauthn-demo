@@ -12,7 +12,7 @@ cd "$PROJECT_ROOT"
 echo "[1/5] Installing Gateway API CRDs (v1.6.1)..."
 kubectl delete validatingadmissionpolicy safe-upgrades.gateway.networking.k8s.io --ignore-not-found 2>/dev/null || true
 kubectl delete validatingadmissionpolicybinding safe-upgrades.gateway.networking.k8s.io --ignore-not-found 2>/dev/null || true
-kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.6.1/experimental-install.yaml || true
+kubectl apply --server-side --force-conflicts -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.6.1/experimental-install.yaml
 
 echo "[2/5] Deploying Cilium via Helm using k8s/cilium-values.yaml (with --wait)..."
 helm repo add cilium https://helm.cilium.io/ 2>/dev/null || true

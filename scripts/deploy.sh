@@ -35,7 +35,10 @@ buildah push --compression-format zstd yubi-frontend:latest oci-archive:frontend
 echo "=> Installing CloudNativePG operator via Helm..."
 helm repo add cnpg https://cloudnative-pg.github.io/charts
 helm repo update
-helm upgrade --install cnpg cnpg/cloudnative-pg --namespace cnpg-system --create-namespace
+helm upgrade --install cnpg cnpg/cloudnative-pg --namespace cnpg-system --create-namespace \
+  --wait \
+  --timeout 20m
+
 kubectl wait --for=condition=Ready pod -l app.kubernetes.io/name=cloudnative-pg -n cnpg-system --timeout=300s || true
 
 echo "=> Creating 'yubi' namespace..."
