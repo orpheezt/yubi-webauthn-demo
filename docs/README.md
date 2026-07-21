@@ -17,6 +17,8 @@ this project.
   - [Detailed Breakdown of PublicKeyCredential Assertion](#detailed-breakdown-of-publickeycredential-assertion)
 - [Session Management & Endpoints](#session-management--endpoints)
 - [Database Schema](#database-schema)
+- [Cilium K8s Infrastructure & Gateway API](#cilium-k8s-infrastructure--gateway-api)
+- [Local HTTPS & WebAuthn Setup (mkcert)](#local-https--webauthn-setup-mkcert)
 - [Assets & Diagram Files](#assets--diagram-files)
 
 ---
@@ -559,6 +561,13 @@ CREATE TABLE credentials (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 ```
+
+---
+
+## Infrastructure & Security Documentation
+
+- **[Cilium K8s Infrastructure & Gateway API](cilium-k8s-infra.md)**: Details eBPF networking, Kube-Proxy Replacement, Gateway API controller, Envoy L7 proxy, LB-IPAM, and service topology.
+- **[Local HTTPS & WebAuthn Setup with `mkcert`](mkcert-setup.md)**: Details WebAuthn Secure Context requirements (`window.isSecureContext`), trusted local root CA installation, certificate generation, and Kubernetes secret loading.
 
 ---
 
