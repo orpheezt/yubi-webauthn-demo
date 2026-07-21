@@ -3,8 +3,8 @@ kind: ConfigMap
 metadata:
   name: yubi-backend-config
 data:
-  RP_ID: "localhost"
-  RP_ORIGIN: "http://localhost:3000"
+  RP_ID: "yubi.local"
+  RP_ORIGIN: "http://yubi.local"
   RUST_LOG: "info"
   PORT: "8080"
   MAX_DB_CONNECTIONS: "10"
