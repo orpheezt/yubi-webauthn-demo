@@ -11,10 +11,16 @@ else
 fi
 
 echo "=> Starting temporary PostgreSQL database using $CONTAINER_CMD..."
+$CONTAINER_CMD rm -f sqlx-prepare >/dev/null 2>&1 || true
 $CONTAINER_CMD run -d --name sqlx-prepare -p 5432:5432 -e POSTGRES_PASSWORD=secret docker.io/library/postgres:18.4-trixie
 
 echo "=> Waiting for database to be ready..."
-sleep 5
+for i in {1..30}; do
+    if $CONTAINER_CMD exec sqlx-prepare pg_isready -U postgres >/dev/null 2>&1; then
+        break
+    fi
+    sleep 1
+done
 
 export DATABASE_URL="postgres://postgres:secret@localhost:5432/postgres"
 

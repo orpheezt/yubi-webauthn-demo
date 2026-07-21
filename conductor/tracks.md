@@ -10,3 +10,7 @@
 - [x] **Track: K8s Infrastructure & Cluster Lifecycle Automation**
   *Link: [./tracks/k8s_lifecycle_20260720/index.md](./tracks/k8s_lifecycle_20260720/index.md)*
 
+- [x] **Track: Cilium Gateway API Integration**
+  *Link: [./tracks/cilium_gateway_20260720/index.md](./tracks/cilium_gateway_20260720/index.md)*
+
+

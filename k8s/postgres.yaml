@@ -3,7 +3,7 @@ kind: Cluster
 metadata:
   name: yubi-pg
 spec:
-  imageName: docker.io/library/postgres:18.4-trixie
+  imageName: ghcr.io/cloudnative-pg/postgresql:18.4-standard-trixie
   instances: 1
   storage:
     size: 1Gi
@@ -15,5 +15,7 @@ spec:
         - "CREATE ROLE yubi_app WITH LOGIN PASSWORD 'app_secret';"
         - "GRANT CONNECT ON DATABASE yubi TO yubi_app;"
         - "GRANT USAGE ON SCHEMA public TO yubi_app;"
-        - "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO yubi_app;"
-        - "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT, UPDATE ON SEQUENCES TO yubi_app;"
+        - "ALTER DEFAULT PRIVILEGES FOR ROLE yubi_migrator IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO yubi_app;"
+        - "ALTER DEFAULT PRIVILEGES FOR ROLE yubi_migrator IN SCHEMA public GRANT USAGE, SELECT, UPDATE ON SEQUENCES TO yubi_app;"
+        - "GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO yubi_app;"
+        - "GRANT USAGE, SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA public TO yubi_app;"
