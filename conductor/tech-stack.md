@@ -13,5 +13,7 @@
 - **Containerization**: Buildah
 - **Orchestration**: Kubernetes
 - **Local Deployment**: Minikube
+- **Local Storage Provisioner**: Rancher Local-Path Provisioner
+- **Lifecycle Management**: Makefile & modular lifecycle scripts (`scripts/setup.sh`, `scripts/teardown.sh`, `scripts/status.sh`, `scripts/verify.sh`)
 - **Database Operator**: CloudNativePG
 - **Database Migrations**: Executed via a dedicated Kubernetes Job using the `sqlx-cli` (Deviation recorded: 2026-07-19)

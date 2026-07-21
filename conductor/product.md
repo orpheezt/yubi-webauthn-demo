@@ -13,5 +13,5 @@ A full-stack WebAuthn demonstration application. The backend provides a secure R
 ## Core Features
 - Secure credential management via REST API.
 - End-to-end WebAuthn flow testing interface.
-- Kubernetes-native deployment (CloudNativePG, component-specific manifests).
-- Local Minikube deployment automation.
+- Kubernetes-native deployment (CloudNativePG, Rancher local-path provisioner, component-specific manifests).
+- Local Minikube deployment & cluster lifecycle management (`make up`, `make status`, `make verify`, `make down`, `make clean`).
