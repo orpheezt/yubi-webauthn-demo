@@ -7,15 +7,15 @@
   - [x] Verify manifests formatting with `kubectl apply --dry-run=client`
 - [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) 4044a44
 
-## Phase 2: Status & Verification Scripts Development
-- [ ] Task: Create `scripts/status.sh` for cluster status reporting
-  - [ ] Implement checks for StorageClasses, `local-path-storage` namespace, `cnpg-system` namespace, and `yubi` namespace resources
-  - [ ] Format terminal output with section headers
-- [ ] Task: Create `scripts/verify.sh` for automated cluster assertions
-  - [ ] Implement assertion for default StorageClass ('standard' / Rancher)
-  - [ ] Implement assertion for CNPG cluster readiness, migration job completion, and backend/frontend/gateway pod readiness
-  - [ ] Set appropriate exit code (0 on success, non-zero on failure)
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+## Phase 2: Status & Verification Scripts Development [checkpoint: 639436d]
+- [x] Task: Create `scripts/status.sh` for cluster status reporting 7f39f9a
+  - [x] Implement checks for StorageClasses, `local-path-storage` namespace, `cnpg-system` namespace, and `yubi` namespace resources
+  - [x] Format terminal output with section headers
+- [x] Task: Create `scripts/verify.sh` for automated cluster assertions 639436d
+  - [x] Implement assertion for default StorageClass ('standard' / Rancher)
+  - [x] Implement assertion for CNPG cluster readiness, migration job completion, and backend/frontend/gateway pod readiness
+  - [x] Set appropriate exit code (0 on success, non-zero on failure)
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) 639436d
 
 ## Phase 3: Setup & Teardown Lifecycle Scripts Refactoring
 - [ ] Task: Refactor `scripts/setup.sh` to support full automated cluster lifecycle
