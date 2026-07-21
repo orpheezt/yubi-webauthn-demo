@@ -13,12 +13,17 @@ echo "[1/5] Deploying Cilium via Helm using k8s/cilium-values.yaml..."
 helm repo add cilium https://helm.cilium.io/ 2>/dev/null || true
 helm repo update cilium
 
+# Remove minikube's initial static Cilium objects so Helm gets clean resource ownership
+kubectl delete daemonset cilium cilium-envoy -n kube-system --ignore-not-found 2>/dev/null || true
+kubectl delete deployment cilium-operator -n kube-system --ignore-not-found 2>/dev/null || true
+kubectl delete configmap cilium-config cilium-envoy-config -n kube-system --ignore-not-found 2>/dev/null || true
+kubectl delete clusterrole cilium cilium-operator --ignore-not-found 2>/dev/null || true
+
 K8S_HOST=$(kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}' | sed 's|https://||' | cut -d: -f1)
 K8S_PORT=$(kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}' | sed 's|https://||' | cut -d: -f2)
 
 helm upgrade --install cilium cilium/cilium \
   --namespace kube-system \
-  --take-ownership \
   -f k8s/cilium-values.yaml \
   --set k8sServiceHost="$K8S_HOST" \
   --set k8sServicePort="$K8S_PORT"
