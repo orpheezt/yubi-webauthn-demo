@@ -34,7 +34,8 @@ helm upgrade --install cilium cilium/cilium \
   -f k8s/cilium-values.yaml \
   --set k8sServiceHost="$K8S_HOST" \
   --set k8sServicePort="$K8S_PORT" \
-  --wait
+  --wait \
+  --timeout 20m
 
 echo "[2/4] Applying Cilium LB-IPAM pool and L2 announcement policy..."
 kubectl apply -f k8s/cilium-lb.yaml
@@ -47,7 +48,8 @@ helm upgrade --install cert-manager jetstack/cert-manager \
   --namespace cert-manager \
   --create-namespace \
   --set crds.enabled=true \
-  --wait
+  --wait \
+  --timeout 20m
 
 echo "[4/4] Applying cert-manager ClusterIssuer & Certificate..."
 kubectl create namespace yubi --dry-run=client -o yaml | kubectl apply -f -
