@@ -23,8 +23,9 @@ if ! minikube status &> /dev/null; then
     echo "  $MINIKUBE_CMD"
     echo "======================================================"
     if [ -t 0 ] && [ "${AUTO_APPROVE:-false}" != "true" ]; then
+        YESEXPR=$(locale yesexpr 2>/dev/null || echo "^[yY]")
         read -p "Proceed with starting Minikube? [y/N] " confirm
-        if [[ "$confirm" != [yY] && "$confirm" != [yY][eE][sS] ]]; then
+        if ! [[ "$confirm" =~ $YESEXPR ]]; then
             echo "Operation cancelled by user."
             exit 1
         fi
