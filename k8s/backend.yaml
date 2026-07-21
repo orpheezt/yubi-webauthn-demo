@@ -4,7 +4,7 @@ metadata:
   name: yubi-backend-config
 data:
   RP_ID: "yubi.local"
-  RP_ORIGIN: "http://yubi.local"
+  RP_ORIGIN: "https://yubi.local"
   RUST_LOG: "info"
   PORT: "8080"
   MAX_DB_CONNECTIONS: "10"
