@@ -17,7 +17,10 @@ fi
 
 if ! minikube status &> /dev/null; then
     echo "Minikube is not running. Starting Minikube cluster with Cilium CNI..."
-    minikube start --nodes=4 --driver=kvm2 --cni=cilium --cpus=2 --memory=4096 --disk-size=20g --kubernetes-version=v1.36.1 --container-runtime=containerd --addons=metrics-server,storage-provisioner=false,default-storageclass=false
+    minikube start --nodes=4 --driver=kvm2 --cni=cilium --cpus=2 --memory=4096 --disk-size=20g --kubernetes-version=v1.36.1 --container-runtime=containerd --addons=metrics-server
+    echo "Disabling default storage addons in favor of Rancher local-path-provisioner..."
+    minikube addons disable storage-provisioner || true
+    minikube addons disable default-storageclass || true
 else
     echo "Minikube is running."
 fi
