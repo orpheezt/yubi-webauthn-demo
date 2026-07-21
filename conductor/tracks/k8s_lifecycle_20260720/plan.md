@@ -27,8 +27,8 @@
   - [x] Implement `clean` mode to additionally uninstall CNPG operator, Rancher provisioner, and local build artifacts
 - [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) cfbdd92
 
-## Phase 4: Root Makefile Interface & End-to-End Testing
-- [ ] Task: Create root `Makefile`
-  - [ ] Define `.PHONY` targets: `help`, `up`, `status`, `verify`, `down`, `clean`
-  - [ ] Delegate targets cleanly to corresponding scripts in `scripts/` with executable permissions
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+## Phase 4: Root Makefile Interface & End-to-End Testing [checkpoint: e9c2aaf]
+- [x] Task: Create root `Makefile` e9c2aaf
+  - [x] Define `.PHONY` targets: `help`, `up`, `status`, `verify`, `down`, `clean`
+  - [x] Delegate targets cleanly to corresponding scripts in `scripts/` with executable permissions
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) e9c2aaf
