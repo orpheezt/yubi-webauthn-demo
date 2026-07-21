@@ -17,15 +17,15 @@
   - [x] Set appropriate exit code (0 on success, non-zero on failure)
 - [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) 639436d
 
-## Phase 3: Setup & Teardown Lifecycle Scripts Refactoring
-- [ ] Task: Refactor `scripts/setup.sh` to support full automated cluster lifecycle
-  - [ ] Add Minikube cluster status check and conditional startup with storage addons disabled (`storage-provisioner=false,default-storageclass=false`)
-  - [ ] Implement step-by-step setup ([1/6] to [6/6]) including Rancher storage provisioner, image building/loading, CNPG operator, and app manifests
-  - [ ] Add post-deployment access info and status display
-- [ ] Task: Create `scripts/teardown.sh` for `down` and `clean` operations
-  - [ ] Implement `down` mode to safely delete `yubi` app namespace and resources
-  - [ ] Implement `clean` mode to additionally uninstall CNPG operator, Rancher provisioner, and local build artifacts
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+## Phase 3: Setup & Teardown Lifecycle Scripts Refactoring [checkpoint: cfbdd92]
+- [x] Task: Refactor `scripts/setup.sh` to support full automated cluster lifecycle cfbdd92
+  - [x] Add Minikube cluster status check and conditional startup with storage addons disabled (`storage-provisioner=false,default-storageclass=false`)
+  - [x] Implement step-by-step setup ([1/6] to [6/6]) including Rancher storage provisioner, image building/loading, CNPG operator, and app manifests
+  - [x] Add post-deployment access info and status display
+- [x] Task: Create `scripts/teardown.sh` for `down` and `clean` operations cfbdd92
+  - [x] Implement `down` mode to safely delete `yubi` app namespace and resources
+  - [x] Implement `clean` mode to additionally uninstall CNPG operator, Rancher provisioner, and local build artifacts
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) cfbdd92
 
 ## Phase 4: Root Makefile Interface & End-to-End Testing
 - [ ] Task: Create root `Makefile`
