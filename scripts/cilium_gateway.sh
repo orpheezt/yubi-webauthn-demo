@@ -2,22 +2,60 @@
 set -eo pipefail
 
 echo "======================================================"
-echo "    Cilium Gateway API Setup & Activation             "
+echo "    Cilium Gateway API & cert-manager Setup           "
 echo "======================================================"
 
-echo "[1/4] Installing Gateway API CRDs (v1.6.1)..."
-kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.6.1/standard-install.yaml
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+cd "$PROJECT_ROOT"
 
-echo "[2/4] Patching cilium-config ConfigMap in kube-system..."
-kubectl patch configmap cilium-config -n kube-system --type merge -p '{"data":{"enable-gateway-api":"true"}}'
+echo "[1/5] Deploying Cilium via Helm using k8s/cilium-values.yaml..."
+helm repo add cilium https://helm.cilium.io/ 2>/dev/null || true
+helm repo update cilium
 
-echo "[3/4] Restarting Cilium DaemonSets and Operator Deployment..."
-kubectl rollout restart daemonset/cilium -n kube-system
-kubectl rollout restart daemonset/cilium-envoy -n kube-system 2>/dev/null || true
-kubectl rollout restart deployment/cilium-operator -n kube-system
+K8S_HOST=$(kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}' | sed 's|https://||' | cut -d: -f1)
+K8S_PORT=$(kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}' | sed 's|https://||' | cut -d: -f2)
 
-echo "[4/4] Waiting for Cilium rollouts to complete..."
+kubectl create namespace cilium-secrets --dry-run=client -o yaml | kubectl apply -f -
+
+helm upgrade --install cilium cilium/cilium \
+  --namespace kube-system \
+  -f k8s/cilium-values.yaml \
+  --set k8sServiceHost="$K8S_HOST" \
+  --set k8sServicePort="$K8S_PORT"
+
+echo "[2/5] Applying Cilium LB-IPAM pool and L2 announcement policy..."
+kubectl apply -f k8s/cilium-lb.yaml
+
+echo "[3/5] Installing cert-manager via Helm..."
+helm repo add jetstack https://charts.jetstack.io 2>/dev/null || true
+helm repo update jetstack
+helm upgrade --install cert-manager jetstack/cert-manager \
+  --namespace cert-manager \
+  --create-namespace \
+  --set crds.enabled=true
+
+echo "Waiting for cert-manager deployments..."
+kubectl rollout status deployment/cert-manager -n cert-manager --timeout=120s
+kubectl rollout status deployment/cert-manager-webhook -n cert-manager --timeout=120s
+
+echo "[4/5] Applying cert-manager ClusterIssuer & Certificate..."
+kubectl create namespace yubi --dry-run=client -o yaml | kubectl apply -f -
+kubectl apply -f k8s/cert-manager-issuer.yaml
+
+echo "Waiting for cert-manager to issue yubi-tls-secret..."
+kubectl wait -n yubi --for=condition=Ready certificate/yubi-local-cert --timeout=120s || true
+
+# Sync secret to cilium-secrets namespace for Envoy
+kubectl get secret yubi-tls-secret -n yubi -o yaml 2>/dev/null | \
+  sed 's/name: yubi-tls-secret/name: yubi-yubi-tls-secret/' | \
+  sed 's/namespace: yubi/namespace: cilium-secrets/' | \
+  kubectl apply -f - 2>/dev/null || true
+
+echo "[5/5] Waiting for Cilium DaemonSet & Operator rollout..."
 kubectl rollout status daemonset/cilium -n kube-system --timeout=300s
-kubectl rollout status deployment/cilium-operator -n kube-system --timeout=300s
+kubectl rollout status deployment/cilium-operator -n kube-system --timeout=180s
 
-echo "Cilium Gateway API setup complete."
+echo "======================================================"
+echo "    Cilium Gateway & cert-manager Setup Complete!     "
+echo "======================================================"

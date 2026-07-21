@@ -1,0 +1,8 @@
+# Cilium Helm Chart Configuration
+gatewayAPI:
+  enabled: true
+
+kubeProxyReplacement: true
+
+l2announcements:
+  enabled: true
