@@ -16,8 +16,20 @@ if ! command -v minikube &> /dev/null; then
 fi
 
 if ! minikube status &> /dev/null; then
-    echo "Minikube is not running. Starting Minikube cluster with Cilium CNI..."
-    minikube start --nodes=4 --driver=kvm2 --cni=cilium --cpus=2 --memory=4096 --disk-size=20g --kubernetes-version=v1.36.1 --container-runtime=containerd --addons=metrics-server
+    echo "Minikube is not running."
+    MINIKUBE_CMD="minikube start --nodes=4 --driver=kvm2 --cni=cilium --cpus=2 --memory=4096 --disk-size=20g --kubernetes-version=v1.36.1 --container-runtime=containerd --addons=metrics-server"
+    echo "======================================================"
+    echo "Minikube Start Command:"
+    echo "  $MINIKUBE_CMD"
+    echo "======================================================"
+    if [ -t 0 ] && [ "${AUTO_APPROVE:-false}" != "true" ]; then
+        read -p "Proceed with starting Minikube? [y/N] " confirm
+        if [[ "$confirm" != [yY] && "$confirm" != [yY][eE][sS] ]]; then
+            echo "Operation cancelled by user."
+            exit 1
+        fi
+    fi
+    $MINIKUBE_CMD
     echo "Disabling default storage addons in favor of Rancher local-path-provisioner..."
     minikube addons disable storage-provisioner || true
     minikube addons disable default-storageclass || true
