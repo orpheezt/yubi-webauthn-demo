@@ -28,6 +28,7 @@ K8S_PORT=$(kubectl config view --minify -o jsonpath='{.clusters[0].cluster.serve
 
 helm upgrade --install cilium cilium/cilium \
   --namespace kube-system \
+  --take-ownership \
   -f k8s/cilium-values.yaml \
   --set k8sServiceHost="$K8S_HOST" \
   --set k8sServicePort="$K8S_PORT"
