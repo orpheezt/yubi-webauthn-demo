@@ -18,7 +18,10 @@ kubectl delete daemonset cilium cilium-envoy -n kube-system --ignore-not-found 2
 kubectl delete deployment cilium-operator -n kube-system --ignore-not-found 2>/dev/null || true
 kubectl delete configmap cilium-config cilium-envoy-config -n kube-system --ignore-not-found 2>/dev/null || true
 kubectl delete clusterrole cilium cilium-operator --ignore-not-found 2>/dev/null || true
-kubectl delete ns cilium-secrets --ignore-not-found 2>/dev/null || true
+# Adopt cilium-secrets namespace for Helm ownership (prevents kubernetes finalizer hangs)
+kubectl create namespace cilium-secrets --dry-run=client -o yaml | kubectl apply -f -
+kubectl label namespace cilium-secrets app.kubernetes.io/managed-by=Helm --overwrite 2>/dev/null || true
+kubectl annotate namespace cilium-secrets meta.helm.sh/release-name=cilium meta.helm.sh/release-namespace=kube-system --overwrite 2>/dev/null || true
 
 K8S_HOST=$(kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}' | sed 's|https://||' | cut -d: -f1)
 K8S_PORT=$(kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}' | sed 's|https://||' | cut -d: -f2)
